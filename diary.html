@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Дневник</title>
+  <title>Дневник — FoodDiary</title>
   <link rel="icon" href="images/logo_1.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,7 +15,7 @@
   <header class="header container">
     <a href="diary.html" class="header__logo">
       <img src="images/logo_1.png" alt="Логотип" class="logo__img">
-      ПП-трекер
+      FoodDiary
     </a>
     <nav class="nav">
       <ul class="nav__list">
@@ -39,6 +39,7 @@
       <button type="button" class="diary-date__arrow" id="prev-day" aria-label="Предыдущий день">←</button>
       <div class="diary-date__current" id="current-date">…</div>
       <button type="button" class="diary-date__arrow" id="next-day" aria-label="Следующий день">→</button>
+      <input type="date" id="date-picker" class="form__input" style="width:auto;" aria-label="Выбрать дату">
     </section>
 
     <!-- Сводка за день -->
@@ -83,7 +84,7 @@
       <div class="footer__header">
         <a href="diary.html" class="footer__logo">
           <img src="images/logo_1.png" alt="Логотип" class="logo__img">
-          ПП-трекер
+          FoodDiary
         </a>
         <ul class="footer__nav-list">
           <li><a href="diary.html" class="footer__nav-link">Дневник</a></li>
@@ -96,14 +97,14 @@
       <div class="footer__body">
         <div class="footer__contact-info">
           <span class="footer__contact-badge">Контакты:</span>
-          <p>Email: support@pp-tracker.ru</p>
+          <p>Email: support@fooddiary.ru</p>
           <p>Телефон: +7 (800) 222-22-22</p>
           <p>Адрес: г. Москва, ул. Киевская, д. 1</p>
         </div>
       </div>
 
       <div class="footer__bottom">
-        <p>© 2026 ПП-трекер. Все права защищены.</p>
+        <p>© 2026 FoodDiary. Все права защищены.</p>
         <a href="privacy.html" class="footer__privacy">Политика конфиденциальности</a>
       </div>
     </div>

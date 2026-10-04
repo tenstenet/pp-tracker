@@ -1288,3 +1288,60 @@ a {
     width: 100%;
   }
 }
+
+/* ===== FoodDiary: дополнения. Допиши в конец style.css ===== */
+
+/* фильтр категорий рядом с поиском */
+.products-toolbar .form__select {
+  flex: 0 0 auto;
+  min-width: 200px;
+}
+
+/* ряд кнопок в карточке продукта / рецепта */
+.product-card__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+.product-card__actions + .product-card__actions {
+  margin-top: 0;
+}
+.product-card__actions .button {
+  flex: 1;
+  margin-top: 0;
+  padding: 10px 14px;
+  font-size: 15px;
+  text-align: center;
+}
+
+/* удаление комментария */
+.comment__delete {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-white);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-dark);
+  padding: 0;
+  transition: all 0.2s ease;
+}
+.comment__delete:hover {
+  background: var(--color-error);
+  color: var(--color-white);
+  border-color: var(--color-error);
+}
+
+/* карточка рецепта */
+#recipe-ingredients-list,
+#recipe-steps-list {
+  padding-left: 22px;
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+#recipe-steps-list li {
+  margin-bottom: 8px;
+}

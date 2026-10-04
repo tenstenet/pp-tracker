@@ -1,23 +1,32 @@
 // js/profile.js
 
 document.addEventListener('DOMContentLoaded', () => {
-  const user = API.getCurrentUser();
+  let user = API.getCurrentUser();
   if (!user) return; // auth.js уже выкинет
 
   // Элементы
-  const avatarEl    = document.getElementById('profile-avatar');
-  const nameEl      = document.getElementById('profile-name');
-  const emailEl     = document.getElementById('profile-email');
-  const sinceEl     = document.getElementById('profile-since');
-  const form        = document.getElementById('profile-form');
-  const nameInput   = document.getElementById('edit-name');
-  const toast       = document.getElementById('toast');
+  const avatarEl     = document.getElementById('profile-avatar');
+  const nameEl       = document.getElementById('profile-name');
+  const emailEl      = document.getElementById('profile-email');
+  const sinceEl      = document.getElementById('profile-since');
+  const roleEl       = document.getElementById('profile-role');
+  const form         = document.getElementById('profile-form');
+  const nameInput    = document.getElementById('edit-name');
+  const deleteBtn    = document.getElementById('delete-account');
+  const toast        = document.getElementById('toast');
 
   // Заполняем карточку
   renderUser(user);
   loadStats();
 
-  // Сабмит формы
+  // Аккаунт администратора удалять нельзя — прячем блок целиком
+  if (user.role === 'admin') {
+    const section = deleteBtn.closest('section');
+    if (section) section.style.display = 'none';
+  }
+
+  // ============ СМЕНА ИМЕНИ ============
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     clearErrors();
@@ -30,20 +39,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      // Обновляем currentUser
-      const updated = { ...user, name: newName };
-      localStorage.setItem('currentUser', JSON.stringify(updated));
-
-      // Обновляем также в списке "users" (если есть)
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const idx = users.findIndex(u => u.email === user.email);
-      if (idx !== -1) {
-        users[idx].name = newName;
-        localStorage.setItem('users', JSON.stringify(users));
-      }
-
-      renderUser(updated);
+      user = await API.updateName(newName);
+      renderUser(user);
       showToast('Имя сохранено');
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  // ============ УДАЛЕНИЕ АККАУНТА ============
+
+  deleteBtn.addEventListener('click', async () => {
+    const ok = confirm('Удалить аккаунт? Дневник, избранное, посты и комментарии будут удалены без возможности восстановления.');
+    if (!ok) return;
+
+    try {
+      await API.deleteAccount();
+      location.replace('index.html');
     } catch (err) {
       alert(err.message);
     }
@@ -64,13 +76,18 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       sinceEl.textContent = '';
     }
+
+    if (u.role === 'admin') {
+      roleEl.textContent = 'Роль: администратор';
+      roleEl.style.display = '';
+    } else {
+      roleEl.style.display = 'none';
+    }
   }
 
   async function loadStats() {
     try {
-      // Все приёмы пищи пользователя
-      const allMeals = await getAllMeals();
-
+      const allMeals  = await API.getAllMeals();
       const favorites = await API.getFavorites();
 
       // Уникальные дни
@@ -82,17 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.error(err);
     }
-  }
-
-  // Получаем все приёмы пищи (не только за день)
-  async function getAllMeals() {
-    if (typeof USE_MOCK !== 'undefined' && USE_MOCK) {
-      return JSON.parse(localStorage.getItem('meals') || '[]');
-    }
-    // Когда будет бэк — сделаем отдельный API.getAllMeals()
-    const res = await fetch('/api/meals/all', { credentials: 'include' });
-    if (!res.ok) return [];
-    return res.json();
   }
 
   // ============ ВСПОМОГАТЕЛЬНЫЕ ============

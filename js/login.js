@@ -65,4 +65,4 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.disabled = isLoading;
     btn.textContent = isLoading ? 'Входим...' : 'Войти';
   }
-});
+});

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Рецепты</title>
+  <title>Рецепты — FoodDiary</title>
   <link rel="icon" href="images/logo_1.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,7 +15,7 @@
   <header class="header container">
     <a href="diary.html" class="header__logo">
       <img src="images/logo_1.png" alt="Логотип" class="logo__img">
-      ПП-трекер
+      FoodDiary
     </a>
     <nav class="nav">
       <ul class="nav__list">
@@ -41,6 +41,13 @@
 
     <div class="products-toolbar">
       <input type="text" id="search" class="form__input" placeholder="Поиск по названию...">
+      <select id="category-filter" class="form__select" style="width:auto;" aria-label="Категория">
+        <option value="">Все категории</option>
+        <option value="mass">Массонабор</option>
+        <option value="loss">Похудение</option>
+        <option value="balance">Баланс</option>
+      </select>
+      <button type="button" class="button button_theme_green" id="admin-add-recipe" style="display:none;">+ Новый рецепт</button>
       <a href="diary.html" class="button button_theme_outline" id="back-link">← К дневнику</a>
     </div>
 
@@ -49,6 +56,77 @@
     <div id="empty-search" class="diary-empty" style="display:none;">
       Ничего не найдено
     </div>
+
+    <!-- Панель администратора: добавление / изменение рецепта -->
+    <section id="recipe-admin-panel" class="grams-panel" style="display:none;">
+      <div class="card grams-panel__card">
+        <div class="grams-panel__head">
+          <h2 class="grams-panel__title" id="recipe-form-title">Новый рецепт</h2>
+          <button type="button" class="grams-panel__close" id="recipe-cancel" aria-label="Закрыть">×</button>
+        </div>
+
+        <form id="recipe-form" class="grams-panel__form" novalidate>
+          <input type="hidden" id="recipe-id">
+
+          <div class="form__group">
+            <label for="recipe-name" class="form__label">Название</label>
+            <input type="text" id="recipe-name" class="form__input" required>
+            <span class="form__error" data-error-for="recipe-name"></span>
+          </div>
+
+          <div class="form__group">
+            <label for="recipe-category" class="form__label">Категория</label>
+            <select id="recipe-category" class="form__select" required>
+              <option value="mass">Массонабор</option>
+              <option value="loss">Похудение</option>
+              <option value="balance">Баланс</option>
+            </select>
+            <span class="form__error" data-error-for="recipe-category"></span>
+          </div>
+
+          <div class="form__group">
+            <label for="recipe-description" class="form__label">Краткое описание</label>
+            <input type="text" id="recipe-description" class="form__input">
+            <span class="form__error" data-error-for="recipe-description"></span>
+          </div>
+
+          <div class="form__group">
+            <label for="recipe-calories" class="form__label">Калории на порцию, ккал</label>
+            <input type="number" id="recipe-calories" class="form__input" min="0" step="any" required>
+            <span class="form__error" data-error-for="recipe-calories"></span>
+          </div>
+          <div class="form__group">
+            <label for="recipe-protein" class="form__label">Белки на порцию, г</label>
+            <input type="number" id="recipe-protein" class="form__input" min="0" step="any" required>
+            <span class="form__error" data-error-for="recipe-protein"></span>
+          </div>
+          <div class="form__group">
+            <label for="recipe-fats" class="form__label">Жиры на порцию, г</label>
+            <input type="number" id="recipe-fats" class="form__input" min="0" step="any" required>
+            <span class="form__error" data-error-for="recipe-fats"></span>
+          </div>
+          <div class="form__group">
+            <label for="recipe-carbs" class="form__label">Углеводы на порцию, г</label>
+            <input type="number" id="recipe-carbs" class="form__input" min="0" step="any" required>
+            <span class="form__error" data-error-for="recipe-carbs"></span>
+          </div>
+
+          <div class="form__group">
+            <label for="recipe-ingredients" class="form__label">Ингредиенты (по одному в строке, например: Овсянка — 50 г)</label>
+            <textarea id="recipe-ingredients" class="form__textarea" rows="5" required></textarea>
+            <span class="form__error" data-error-for="recipe-ingredients"></span>
+          </div>
+
+          <div class="form__group">
+            <label for="recipe-steps" class="form__label">Шаги приготовления (по одному в строке)</label>
+            <textarea id="recipe-steps" class="form__textarea" rows="6" required></textarea>
+            <span class="form__error" data-error-for="recipe-steps"></span>
+          </div>
+
+          <button type="submit" class="button button_theme_green button_full">Сохранить</button>
+        </form>
+      </div>
+    </section>
 
     <!-- Toast -->
     <div id="toast" class="toast"></div>
@@ -60,7 +138,7 @@
       <div class="footer__header">
         <a href="diary.html" class="footer__logo">
           <img src="images/logo_1.png" alt="Логотип" class="logo__img">
-          ПП-трекер
+          FoodDiary
         </a>
         <ul class="footer__nav-list">
           <li><a href="diary.html" class="footer__nav-link">Дневник</a></li>
@@ -73,14 +151,14 @@
       <div class="footer__body">
         <div class="footer__contact-info">
           <span class="footer__contact-badge">Контакты:</span>
-          <p>Email: support@pp-tracker.ru</p>
+          <p>Email: support@fooddiary.ru</p>
           <p>Телефон: +7 (800) 222-22-22</p>
           <p>Адрес: г. Москва, ул. Киевская, д. 1</p>
         </div>
       </div>
 
       <div class="footer__bottom">
-        <p>© 2026 ПП-трекер. Все права защищены.</p>
+        <p>© 2026 FoodDiary. Все права защищены.</p>
         <a href="privacy.html" class="footer__privacy">Политика конфиденциальности</a>
       </div>
     </div>

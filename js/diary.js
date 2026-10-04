@@ -2,10 +2,14 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   // ---- Состояние ----
-  let currentDate = todayISO(); // YYYY-MM-DD
+  // Дата берётся из ?date=YYYY-MM-DD (после добавления еды со страниц продуктов/рецептов),
+  // иначе — сегодня. Будущие даты не допускаются.
+  const fromUrl = new URLSearchParams(location.search).get('date');
+  let currentDate = (isValidISO(fromUrl) && fromUrl <= todayISO()) ? fromUrl : todayISO();
 
   // ---- Элементы ----
   const dateEl       = document.getElementById('current-date');
+  const datePicker   = document.getElementById('date-picker');
   const prevBtn      = document.getElementById('prev-day');
   const nextBtn      = document.getElementById('next-day');
   const productsList = document.getElementById('products-list');
@@ -23,6 +27,19 @@ document.addEventListener('DOMContentLoaded', () => {
   prevBtn.addEventListener('click', () => changeDay(-1));
   nextBtn.addEventListener('click', () => changeDay(1));
 
+  if (datePicker) {
+    datePicker.addEventListener('change', () => {
+      const value = datePicker.value;
+      if (!isValidISO(value) || value > todayISO()) {
+        datePicker.value = currentDate; // пусто или будущее — возвращаем прежнюю дату
+        return;
+      }
+      currentDate = value;
+      renderDate();
+      loadAndRender();
+    });
+  }
+
   document.querySelectorAll('.diary-section__add').forEach(btn => {
     btn.addEventListener('click', () => {
       const type = btn.dataset.type; // 'product' | 'recipe'
@@ -32,19 +49,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---- Логика ----
 
-  function todayISO() {
-    const d = new Date();
+  function toISO(d) {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
   }
 
+  function todayISO() {
+    return toISO(new Date());
+  }
+
+  function isValidISO(value) {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const d = new Date(value + 'T00:00:00');
+    return !isNaN(d.getTime()) && toISO(d) === value;
+  }
+
   function changeDay(delta) {
     const d = new Date(currentDate + 'T00:00:00');
     d.setDate(d.getDate() + delta);
 
-    const next = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const next = toISO(d);
     if (next > todayISO()) return; // не пускаем в будущее
 
     currentDate = next;
@@ -54,28 +80,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderDate() {
     const d = new Date(currentDate + 'T00:00:00');
-    const formatted = d.toLocaleDateString('ru-RU', {
+    dateEl.textContent = d.toLocaleDateString('ru-RU', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
       weekday: 'long'
     });
-    dateEl.textContent = formatted;
+
+    if (datePicker) {
+      datePicker.max = todayISO();
+      datePicker.value = currentDate;
+    }
 
     // Скрываем стрелку «вперёд», если уже сегодня
     nextBtn.style.visibility = (currentDate === todayISO()) ? 'hidden' : 'visible';
+
+    // Дата остаётся в адресе — после обновления страницы откроется тот же день
+    try { history.replaceState(null, '', `?date=${currentDate}`); } catch (e) { /* не критично */ }
   }
 
   async function loadAndRender() {
+    const dateAtRequest = currentDate;
     try {
-      const meals = await API.getMeals(currentDate);
+      const meals = await API.getMeals(dateAtRequest);
+      if (dateAtRequest !== currentDate) return; // пользователь уже перешёл на другой день
 
-      const products = meals.filter(m => m.type === 'product');
-      const recipes  = meals.filter(m => m.type === 'recipe');
-
-      renderList(productsList, products);
-      renderList(recipesList,  recipes);
-
+      renderList(productsList, meals.filter(m => m.type === 'product'));
+      renderList(recipesList,  meals.filter(m => m.type === 'recipe'));
       renderSummary(meals);
     } catch (err) {
       console.error(err);
@@ -99,10 +130,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderList(container, items) {
     if (items.length === 0) {
-      const isEmptyToday = (currentDate === todayISO());
+      const isToday = (currentDate === todayISO());
       container.innerHTML = `
         <div class="diary-empty">
-          ${isEmptyToday ? 'Ты ещё ничего не ел сегодня' : 'Пусто'}
+          ${isToday ? 'Ты ещё ничего не ел сегодня' : 'Пусто'}
         </div>
       `;
       return;

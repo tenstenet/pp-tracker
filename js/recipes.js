@@ -1,136 +1,63 @@
 // js/recipes.js
-
-// ============ КАТАЛОГ РЕЦЕПТОВ ============
-// КБЖУ указаны НА ПОРЦИЮ (1 порция)
-const RECIPES = [
-  {
-    id: 1,
-    name: 'Овсяноблин с творогом',
-    description: 'Овсянка, яйцо, творог, зелень',
-    calories: 320, protein: 25, fats: 10, carbs: 30
-  },
-  {
-    id: 2,
-    name: 'Греческий салат',
-    description: 'Огурец, помидор, сыр фета, оливки, масло',
-    calories: 280, protein: 8,  fats: 22, carbs: 10
-  },
-  {
-    id: 3,
-    name: 'Куриное филе с овощами',
-    description: 'Курица, брокколи, перец, лук',
-    calories: 340, protein: 42, fats: 10, carbs: 15
-  },
-  {
-    id: 4,
-    name: 'Творожная запеканка',
-    description: 'Творог, яйцо, мёд, изюм',
-    calories: 260, protein: 22, fats: 8,  carbs: 25
-  },
-  {
-    id: 5,
-    name: 'Смузи с бананом и клубникой',
-    description: 'Банан, клубника, йогурт, мёд',
-    calories: 210, protein: 6,  fats: 3,  carbs: 40
-  },
-  {
-    id: 6,
-    name: 'Лосось с рисом',
-    description: 'Лосось, рис, лимон, зелень',
-    calories: 480, protein: 32, fats: 18, carbs: 45
-  },
-  {
-    id: 7,
-    name: 'Омлет с овощами',
-    description: 'Яйца, помидор, перец, зелень',
-    calories: 240, protein: 18, fats: 16, carbs: 6
-  },
-  {
-    id: 8,
-    name: 'Киноа с овощами',
-    description: 'Киноа, брокколи, морковь, масло',
-    calories: 350, protein: 12, fats: 12, carbs: 50
-  },
-  {
-    id: 9,
-    name: 'Индейка с гречкой',
-    description: 'Индейка, гречка, лук, морковь',
-    calories: 420, protein: 38, fats: 8,  carbs: 48
-  },
-  {
-    id: 10,
-    name: 'Салат с тунцом',
-    description: 'Тунец, яйцо, огурец, листья салата',
-    calories: 230, protein: 28, fats: 10, carbs: 5
-  },
-  {
-    id: 11,
-    name: 'Протеиновые панкейки',
-    description: 'Овсянка, яйцо, банан, протеин',
-    calories: 380, protein: 30, fats: 8,  carbs: 45
-  },
-  {
-    id: 12,
-    name: 'Тыквенный суп-пюре',
-    description: 'Тыква, морковь, лук, сливки',
-    calories: 190, protein: 4,  fats: 8,  carbs: 26
-  },
-  {
-    id: 13,
-    name: 'Котлеты из индейки на пару',
-    description: 'Фарш индейки, лук, яйцо',
-    calories: 250, protein: 30, fats: 10, carbs: 5
-  },
-  {
-    id: 14,
-    name: 'Шоколадный смузи с овсянкой',
-    description: 'Какао, банан, овсянка, молоко',
-    calories: 320, protein: 10, fats: 8,  carbs: 52
-  },
-  {
-    id: 15,
-    name: 'Запечённые овощи с сыром',
-    description: 'Кабачок, баклажан, перец, сыр',
-    calories: 270, protein: 12, fats: 16, carbs: 20
-  }
-];
-
-// ============ ИНИЦИАЛИЗАЦИЯ ============
+// Список рецептов: поиск, фильтр по категории, добавление в дневник (1 порция),
+// избранное, переход в карточку рецепта. Для администратора — добавление,
+// изменение и удаление рецептов.
 
 document.addEventListener('DOMContentLoaded', () => {
-  const urlParams = new URLSearchParams(location.search);
-  const dateFromURL = urlParams.get('date') || todayISO();
-
+  const dateFromURL = pickDate(new URLSearchParams(location.search).get('date'));
   document.getElementById('back-link').href = `diary.html?date=${dateFromURL}`;
 
-  const grid        = document.getElementById('recipes-grid');
-  const searchInput = document.getElementById('search');
-  const emptySearch = document.getElementById('empty-search');
-  const toast       = document.getElementById('toast');
+  const isAdmin    = API.isAdmin();
+  const categories = API.RECIPE_CATEGORIES;
 
-  // Первый рендер
-  renderGrid(RECIPES);
+  // ---- Элементы ----
+  const grid           = document.getElementById('recipes-grid');
+  const searchInput    = document.getElementById('search');
+  const categorySelect = document.getElementById('category-filter');
+  const emptySearch    = document.getElementById('empty-search');
+  const toast          = document.getElementById('toast');
 
-  // Поиск
-  searchInput.addEventListener('input', () => {
-    const query = searchInput.value.trim().toLowerCase();
-    const filtered = RECIPES.filter(r => r.name.toLowerCase().includes(query));
-    renderGrid(filtered);
+  // админ-панель
+  const addBtn     = document.getElementById('admin-add-recipe');
+  const adminPanel = document.getElementById('recipe-admin-panel');
+  const rForm      = document.getElementById('recipe-form');
+  const rTitle     = document.getElementById('recipe-form-title');
+  const rCancel    = document.getElementById('recipe-cancel');
+  const field      = (name) => document.getElementById('recipe-' + name);
 
-    emptySearch.style.display = filtered.length === 0 ? 'block' : 'none';
-    grid.style.display       = filtered.length === 0 ? 'none'  : 'grid';
-  });
+  let recipes = [];
+  let renderToken = 0; // защита от гонки при быстром вводе в поиск
 
-  // ============ РЕНДЕР СЕТКИ ============
+  if (isAdmin) addBtn.style.display = '';
 
-  async function renderGrid(items) {
-    let favIds = new Set();
+  refresh();
+  searchInput.addEventListener('input', refresh);
+  categorySelect.addEventListener('change', refresh);
+
+  // ============ ЗАГРУЗКА И РЕНДЕР ============
+
+  async function refresh() {
+    const token = ++renderToken;
     try {
-      const favs = await API.getFavorites('recipe');
-      favIds = new Set(favs.map(f => f.itemId));
-    } catch (e) {
-      console.warn('Не удалось загрузить избранное', e);
+      const [items, favs] = await Promise.all([
+        API.getRecipes({ search: searchInput.value, category: categorySelect.value }),
+        API.getFavorites('recipe').catch(() => [])
+      ]);
+      if (token !== renderToken) return;
+
+      recipes = items;
+      renderGrid(items, new Set(favs.map(f => f.itemId)));
+    } catch (err) {
+      console.error(err);
+      grid.style.display = 'grid';
+      grid.innerHTML = `<div class="diary-empty" style="grid-column: 1 / -1;">Ошибка: ${escapeHtml(err.message)}</div>`;
     }
+  }
+
+  function renderGrid(items, favIds) {
+    const isEmpty = items.length === 0;
+    emptySearch.style.display = isEmpty ? 'block' : 'none';
+    grid.style.display        = isEmpty ? 'none'  : 'grid';
 
     grid.innerHTML = items.map(r => {
       const isFav = favIds.has(r.id);
@@ -139,52 +66,55 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="product-card__head">
             <div class="product-card__name">${escapeHtml(r.name)}</div>
             <button type="button" class="product-card__fav ${isFav ? 'product-card__fav_active' : ''}"
-                    data-id="${r.id}" aria-label="В избранное">★</button>
+                    data-action="fav" data-id="${r.id}" aria-label="В избранное">★</button>
           </div>
           <div class="product-card__kbju">
             ${r.calories} ккал · Б ${r.protein} · Ж ${r.fats} · У ${r.carbs}
           </div>
-          <div class="product-card__hint">${escapeHtml(r.description)}</div>
-          <button type="button" class="button button_theme_green product-card__add" data-id="${r.id}">
-            Добавить в дневник
-          </button>
+          <div class="product-card__hint">
+            ${escapeHtml(categories[r.category] || 'Без категории')}${r.description ? ' · ' + escapeHtml(r.description) : ''}
+          </div>
+          <div class="product-card__actions">
+            <a class="button button_theme_outline product-card__add"
+               href="recipe.html?id=${r.id}&date=${dateFromURL}">Рецепт</a>
+            <button type="button" class="button button_theme_green product-card__add"
+                    data-action="add" data-id="${r.id}">В дневник</button>
+          </div>
+          ${isAdmin ? `
+          <div class="product-card__actions">
+            <button type="button" class="button button_theme_outline product-card__add"
+                    data-action="edit" data-id="${r.id}">Изменить</button>
+            <button type="button" class="button button_theme_outline product-card__add"
+                    data-action="delete" data-id="${r.id}">Удалить</button>
+          </div>` : ''}
         </div>
       `;
     }).join('');
-
-    grid.querySelectorAll('.product-card__add').forEach(btn => {
-      btn.addEventListener('click', () => addRecipe(Number(btn.dataset.id)));
-    });
-
-    grid.querySelectorAll('.product-card__fav').forEach(btn => {
-      btn.addEventListener('click', () => toggleFavorite(Number(btn.dataset.id), btn));
-    });
   }
+
+  grid.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const id = Number(btn.dataset.id);
+
+    switch (btn.dataset.action) {
+      case 'add':    addToDiary(id); break;
+      case 'fav':    toggleFavorite(id, btn); break;
+      case 'edit':   openForm(recipes.find(r => r.id === id)); break;
+      case 'delete': deleteRecipe(id); break;
+    }
+  });
 
   // ============ ИЗБРАННОЕ ============
 
   async function toggleFavorite(recipeId, btnEl) {
-    const recipe = RECIPES.find(r => r.id === recipeId);
-    if (!recipe) return;
-
     try {
-      const isFav = await API.isFavorite('recipe', recipeId);
-
-      if (isFav) {
+      if (btnEl.classList.contains('product-card__fav_active')) {
         await API.removeFavorite('recipe', recipeId);
         btnEl.classList.remove('product-card__fav_active');
         showToast('Убрано из избранного');
       } else {
-        await API.addFavorite({
-          type: 'recipe',
-          itemId: recipe.id,
-          name: recipe.name,
-          calories: recipe.calories,
-          protein: recipe.protein,
-          fats: recipe.fats,
-          carbs: recipe.carbs,
-          description: recipe.description
-        });
+        await API.addFavorite({ type: 'recipe', itemId: recipeId });
         btnEl.classList.add('product-card__fav_active');
         showToast('Добавлено в избранное');
       }
@@ -194,33 +124,136 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ============ ДОБАВЛЕНИЕ В ДНЕВНИК ============
+  // ============ ДОБАВЛЕНИЕ В ДНЕВНИК (1 порция) ============
 
-  async function addRecipe(recipeId) {
-    const recipe = RECIPES.find(r => r.id === recipeId);
+  async function addToDiary(recipeId) {
+    const recipe = recipes.find(r => r.id === recipeId);
     if (!recipe) return;
 
-    const meal = {
-      type: 'recipe',
-      date: dateFromURL,
-      recipeId: recipe.id,
-      name: recipe.name,
-      calories: recipe.calories,
-      protein:  recipe.protein,
-      fats:     recipe.fats,
-      carbs:    recipe.carbs
-    };
-
     try {
-      await API.addMeal(meal);
+      await API.addMeal({
+        type: 'recipe',
+        date: dateFromURL,
+        recipeId: recipe.id,
+        name: recipe.name,
+        calories: recipe.calories,
+        protein:  recipe.protein,
+        fats:     recipe.fats,
+        carbs:    recipe.carbs
+      });
       showToast('Добавлено в дневник');
     } catch (err) {
       alert(err.message);
     }
   }
 
-  // ============ TOAST ============
+  // ============ АДМИНИСТРАТОР: ДОБАВЛЕНИЕ / ИЗМЕНЕНИЕ / УДАЛЕНИЕ ============
 
+  addBtn.addEventListener('click', () => openForm(null));
+  rCancel.addEventListener('click', closeForm);
+
+  function openForm(recipe) {
+    if (!isAdmin) return;
+    clearFormErrors();
+
+    rTitle.textContent = recipe ? 'Изменить рецепт' : 'Новый рецепт';
+    field('id').value          = recipe ? recipe.id : '';
+    field('name').value        = recipe ? recipe.name : '';
+    field('category').value    = recipe ? recipe.category : Object.keys(categories)[0];
+    field('description').value = recipe ? (recipe.description || '') : '';
+    ['calories', 'protein', 'fats', 'carbs'].forEach(k => {
+      field(k).value = recipe ? recipe[k] : '';
+    });
+    field('ingredients').value = recipe ? (recipe.ingredients || []).join('\n') : '';
+    field('steps').value       = recipe ? (recipe.steps || []).join('\n') : '';
+
+    adminPanel.style.display = 'block';
+    adminPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function closeForm() {
+    adminPanel.style.display = 'none';
+  }
+
+  rForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearFormErrors();
+
+    const data = readForm();
+    if (!data) return;
+
+    const id = field('id').value;
+    try {
+      if (id) await API.updateRecipe(Number(id), data);
+      else    await API.addRecipe(data);
+
+      closeForm();
+      showToast(id ? 'Рецепт обновлён' : 'Рецепт добавлен');
+      refresh();
+    } catch (err) {
+      showFormError('recipe-name', err.message);
+    }
+  });
+
+  // Возвращает данные формы или null, если есть ошибки (они уже показаны)
+  function readForm() {
+    let ok = true;
+    const fail = (id, msg) => { showFormError(id, msg); ok = false; };
+    const lines = (text) => text.split('\n').map(s => s.trim()).filter(Boolean);
+
+    const name = field('name').value.trim();
+    if (name.length < 2) fail('recipe-name', 'Введите название');
+
+    const category = field('category').value;
+    if (!categories[category]) fail('recipe-category', 'Выберите категорию');
+
+    const description = field('description').value.trim();
+    if (description.length > 120) fail('recipe-description', 'Не больше 120 символов');
+
+    const values = {};
+    [['calories', 3000, 'ккал'], ['protein', 300, 'г'], ['fats', 300, 'г'], ['carbs', 500, 'г']].forEach(([k, max, unit]) => {
+      const raw = field(k).value.trim();
+      const n = Number(raw);
+      if (raw === '' || !isFinite(n)) return fail('recipe-' + k, 'Введите число');
+      if (n < 0) return fail('recipe-' + k, 'Не меньше 0');
+      if (n > max) return fail('recipe-' + k, `Не больше ${max} ${unit}`);
+      values[k] = n;
+    });
+
+    const ingredients = lines(field('ingredients').value);
+    if (ingredients.length === 0) fail('recipe-ingredients', 'Добавьте хотя бы один ингредиент');
+
+    const steps = lines(field('steps').value);
+    if (steps.length === 0) fail('recipe-steps', 'Добавьте хотя бы один шаг');
+
+    return ok ? { name, category, description, ...values, ingredients, steps } : null;
+  }
+
+  async function deleteRecipe(id) {
+    const r = recipes.find(x => x.id === id);
+    if (!confirm(`Удалить рецепт «${r ? r.name : ''}»? Он пропадёт из справочника и избранного.`)) return;
+    try {
+      await API.deleteRecipe(id);
+      showToast('Рецепт удалён');
+      refresh();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  function showFormError(id, message) {
+    const input = document.getElementById(id);
+    const error = rForm.querySelector(`[data-error-for="${id}"]`);
+    if (input) input.classList.add('form__input_error');
+    if (error) error.textContent = message;
+  }
+
+  function clearFormErrors() {
+    rForm.querySelectorAll('.form__error').forEach(el => el.textContent = '');
+    rForm.querySelectorAll('.form__input_error').forEach(el => el.classList.remove('form__input_error'));
+  }
+
+  // ============ TOAST ============
   let toastTimer = null;
   function showToast(message) {
     toast.textContent = message;
@@ -230,10 +263,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============ УТИЛИТЫ ============
-
-  function todayISO() {
-    const d = new Date();
+  function toISO(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  // Дата из адреса: только корректная и не из будущего, иначе сегодня
+  function pickDate(raw) {
+    const today = toISO(new Date());
+    if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      const d = new Date(raw + 'T00:00:00');
+      if (!isNaN(d.getTime()) && toISO(d) === raw && raw <= today) return raw;
+    }
+    return today;
   }
 
   function escapeHtml(str) {

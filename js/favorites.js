@@ -1,8 +1,7 @@
 // js/favorites.js
 
 document.addEventListener('DOMContentLoaded', () => {
-  const urlParams = new URLSearchParams(location.search);
-  const dateFromURL = urlParams.get('date') || todayISO();
+  const dateFromURL = pickDate(new URLSearchParams(location.search).get('date'));
 
   document.getElementById('back-link').href = `diary.html?date=${dateFromURL}`;
 
@@ -78,7 +77,9 @@ document.addEventListener('DOMContentLoaded', () => {
     recipesContainer.innerHTML = items.map(r => `
       <div class="product-card">
         <div class="product-card__head">
-          <div class="product-card__name">${escapeHtml(r.name)}</div>
+          <div class="product-card__name">
+            <a href="recipe.html?id=${r.itemId}&date=${dateFromURL}" style="color: inherit; text-decoration: none;">${escapeHtml(r.name)}</a>
+          </div>
           <button type="button" class="product-card__fav product-card__fav_active"
                   data-type="recipe" data-id="${r.itemId}" aria-label="Убрать из избранного">★</button>
         </div>
@@ -122,9 +123,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ============ УТИЛИТЫ ============
 
-  function todayISO() {
-    const d = new Date();
+  function toISO(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  function pickDate(raw) {
+    const today = toISO(new Date());
+    if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      const d = new Date(raw + 'T00:00:00');
+      if (!isNaN(d.getTime()) && toISO(d) === raw && raw <= today) return raw;
+    }
+    return today;
   }
 
   function escapeHtml(str) {

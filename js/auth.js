@@ -13,4 +13,4 @@ async function logout() {
   location.replace('index.html');
 }
 
-window.logout = logout;
+window.logout = logout;

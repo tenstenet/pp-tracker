@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Продукты</title>
+  <title>Продукты — FoodDiary</title>
   <link rel="icon" href="images/logo_1.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,7 +15,7 @@
   <header class="header container">
     <a href="diary.html" class="header__logo">
       <img src="images/logo_1.png" alt="Логотип" class="logo__img">
-      ПП-трекер
+      FoodDiary
     </a>
     <nav class="nav">
       <ul class="nav__list">
@@ -41,6 +41,18 @@
 
     <div class="products-toolbar">
       <input type="text" id="search" class="form__input" placeholder="Поиск по названию...">
+      <select id="category-filter" class="form__select" style="width:auto;" aria-label="Категория">
+        <option value="">Все категории</option>
+        <option value="grains">Крупы и макароны</option>
+        <option value="meat">Мясо и рыба</option>
+        <option value="dairy">Молочные продукты и яйца</option>
+        <option value="vegetables">Овощи</option>
+        <option value="fruits">Фрукты и ягоды</option>
+        <option value="nuts">Орехи и семена</option>
+        <option value="bread">Хлеб</option>
+        <option value="oils">Масла и сладкое</option>
+      </select>
+      <button type="button" class="button button_theme_green" id="admin-add-product" style="display:none;">+ Новый продукт</button>
       <a href="diary.html" class="button button_theme_outline" id="back-link">← К дневнику</a>
     </div>
 
@@ -75,6 +87,67 @@
       </div>
     </section>
 
+    <!-- Панель администратора: добавление / изменение продукта -->
+    <section id="product-admin-panel" class="grams-panel" style="display:none;">
+      <div class="card grams-panel__card">
+        <div class="grams-panel__head">
+          <h2 class="grams-panel__title" id="product-form-title">Новый продукт</h2>
+          <button type="button" class="grams-panel__close" id="product-cancel" aria-label="Закрыть">×</button>
+        </div>
+
+        <form id="product-form" class="grams-panel__form" novalidate>
+          <input type="hidden" id="product-id">
+
+          <div class="form__group">
+            <label for="product-name" class="form__label">Название</label>
+            <input type="text" id="product-name" class="form__input" required>
+            <span class="form__error" data-error-for="product-name"></span>
+          </div>
+
+          <div class="form__group">
+            <label for="product-category" class="form__label">Категория</label>
+            <select id="product-category" class="form__select" required>
+              <option value="grains">Крупы и макароны</option>
+              <option value="meat">Мясо и рыба</option>
+              <option value="dairy">Молочные продукты и яйца</option>
+              <option value="vegetables">Овощи</option>
+              <option value="fruits">Фрукты и ягоды</option>
+              <option value="nuts">Орехи и семена</option>
+              <option value="bread">Хлеб</option>
+              <option value="oils">Масла и сладкое</option>
+            </select>
+            <span class="form__error" data-error-for="product-category"></span>
+          </div>
+
+          <div class="form__group">
+            <label for="product-calories" class="form__label">Калории на 100 г, ккал</label>
+            <input type="number" id="product-calories" class="form__input" min="0" step="any" required>
+            <span class="form__error" data-error-for="product-calories"></span>
+          </div>
+
+          <div class="form__group">
+            <label for="product-protein" class="form__label">Белки на 100 г, г</label>
+            <input type="number" id="product-protein" class="form__input" min="0" step="any" required>
+            <span class="form__error" data-error-for="product-protein"></span>
+          </div>
+
+          <div class="form__group">
+            <label for="product-fats" class="form__label">Жиры на 100 г, г</label>
+            <input type="number" id="product-fats" class="form__input" min="0" step="any" required>
+            <span class="form__error" data-error-for="product-fats"></span>
+          </div>
+
+          <div class="form__group">
+            <label for="product-carbs" class="form__label">Углеводы на 100 г, г</label>
+            <input type="number" id="product-carbs" class="form__input" min="0" step="any" required>
+            <span class="form__error" data-error-for="product-carbs"></span>
+          </div>
+
+          <button type="submit" class="button button_theme_green button_full">Сохранить</button>
+        </form>
+      </div>
+    </section>
+
     <!-- Toast -->
     <div id="toast" class="toast"></div>
 
@@ -85,7 +158,7 @@
       <div class="footer__header">
         <a href="diary.html" class="footer__logo">
           <img src="images/logo_1.png" alt="Логотип" class="logo__img">
-          ПП-трекер
+          FoodDiary
         </a>
         <ul class="footer__nav-list">
           <li><a href="diary.html" class="footer__nav-link">Дневник</a></li>
@@ -98,14 +171,14 @@
       <div class="footer__body">
         <div class="footer__contact-info">
           <span class="footer__contact-badge">Контакты:</span>
-          <p>Email: support@pp-tracker.ru</p>
+          <p>Email: support@fooddiary.ru</p>
           <p>Телефон: +7 (800) 222-22-22</p>
           <p>Адрес: г. Москва, ул. Киевская, д. 1</p>
         </div>
       </div>
 
       <div class="footer__bottom">
-        <p>© 2026 ПП-трекер. Все права защищены.</p>
+        <p>© 2026 FoodDiary. Все права защищены.</p>
         <a href="privacy.html" class="footer__privacy">Политика конфиденциальности</a>
       </div>
     </div>

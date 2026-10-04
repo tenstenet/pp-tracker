@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Стена — FoodDiary</title>
+  <title>Рецепт — FoodDiary</title>
   <link rel="icon" href="images/logo_1.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,8 +23,8 @@
         <li class="nav__item"><a href="profile.html" class="nav__link">Профиль</a></li>
         <li class="nav__item"><a href="products.html" class="nav__link">Продукты</a></li>
         <li class="nav__item"><a href="favorites.html" class="nav__link">Избранное</a></li>
-        <li class="nav__item"><a href="recipes.html" class="nav__link">Рецепты</a></li>
-        <li class="nav__item"><a href="wall.html" class="nav__link nav__link_active">Стена</a></li>
+        <li class="nav__item"><a href="recipes.html" class="nav__link nav__link_active">Рецепты</a></li>
+        <li class="nav__item"><a href="wall.html" class="nav__link">Стена</a></li>
       </ul>
       <div class="nav__auth">
         <button type="button" class="nav__auth-btn" onclick="logout()">Выйти</button>
@@ -35,27 +35,34 @@
   <main class="container">
 
     <section class="page-header">
-      <h1>Стена</h1>
-      <p>Делись успехами и поддерживай других</p>
+      <h1 id="recipe-title">Рецепт</h1>
+      <p id="recipe-category-label"></p>
     </section>
 
-    <!-- Форма нового поста -->
-    <section class="card wall-form">
-      <div class="wall-form__avatar" id="new-post-avatar">?</div>
-      <form id="post-form" class="wall-form__inner">
-        <textarea id="post-text" class="form__textarea" placeholder="Что нового?" maxlength="500" required></textarea>
-        <div class="wall-form__actions">
-          <span class="wall-form__counter"><span id="post-counter">0</span> / 500</span>
-          <button type="submit" class="button button_theme_green">Опубликовать</button>
-        </div>
-      </form>
+    <div class="products-toolbar">
+      <a href="recipes.html" class="button button_theme_outline" id="back-link">← К рецептам</a>
+    </div>
+
+    <section class="card" id="recipe-card">
+      <p id="recipe-description-text"></p>
+
+      <div class="product-card__kbju" id="recipe-kbju"></div>
+      <div class="product-card__hint">на 1 порцию</div>
+
+      <h2 class="diary-section__title">Ингредиенты</h2>
+      <ul id="recipe-ingredients-list"></ul>
+
+      <h2 class="diary-section__title">Приготовление</h2>
+      <ol id="recipe-steps-list"></ol>
+
+      <div class="products-toolbar">
+        <button type="button" class="button button_theme_green" id="add-to-diary">Добавить в дневник</button>
+        <button type="button" class="button button_theme_outline" id="fav-btn">★ В избранное</button>
+      </div>
     </section>
 
-    <!-- Лента постов -->
-    <div id="posts-feed" class="wall-feed"></div>
-
-    <div id="empty-feed" class="diary-empty" style="display:none;">
-      Пока ни одного поста. Будь первым!
+    <div id="recipe-not-found" class="diary-empty" style="display:none;">
+      Рецепт не найден
     </div>
 
     <!-- Toast -->
@@ -96,6 +103,6 @@
 
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
-  <script src="js/wall.js"></script>
+  <script src="js/recipe.js"></script>
 </body>
 </html>

@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const currentUser = API.getCurrentUser();
   if (!currentUser) return; // auth.js выкинет
 
+  const isAdmin = currentUser.role === 'admin';
+
   // Элементы
   const feed          = document.getElementById('posts-feed');
   const emptyFeed     = document.getElementById('empty-feed');
@@ -48,6 +50,18 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const posts = await API.getPosts();
 
+      // Запоминаем, какие комментарии раскрыты и что не отправлено,
+      // чтобы лайк или новый комментарий не сбрасывали это при перерисовке
+      const openIds = new Set();
+      const drafts = {};
+      feed.querySelectorAll('.post').forEach(postEl => {
+        const id = postEl.dataset.postId;
+        const box = postEl.querySelector('.post__comments');
+        if (box && box.style.display === 'block') openIds.add(id);
+        const input = postEl.querySelector('.post__comment-input');
+        if (input && input.value) drafts[id] = input.value;
+      });
+
       if (posts.length === 0) {
         feed.innerHTML = '';
         emptyFeed.style.display = 'block';
@@ -55,7 +69,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       emptyFeed.style.display = 'none';
-      feed.innerHTML = posts.map(p => renderPost(p, currentUser)).join('');
+      feed.innerHTML = posts.map(p => renderPost(p)).join('');
+
+      feed.querySelectorAll('.post').forEach(postEl => {
+        const id = postEl.dataset.postId;
+        if (openIds.has(id)) postEl.querySelector('.post__comments').style.display = 'block';
+        if (drafts[id]) postEl.querySelector('.post__comment-input').value = drafts[id];
+      });
 
       bindPostEvents();
     } catch (err) {
@@ -63,9 +83,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function renderPost(post, me) {
-    const isOwner    = post.authorEmail === me.email;
-    const isLiked    = (post.likes || []).includes(me.email);
+  function renderPost(post) {
+    const canDelete  = post.authorId === currentUser.id || isAdmin;
+    const isLiked    = (post.likes || []).includes(currentUser.id);
     const likesCount = (post.likes || []).length;
     const comments   = post.comments || [];
 
@@ -77,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="post__author-name">${escapeHtml(post.authorName)}</div>
             <div class="post__date">${formatDate(post.createdAt)}</div>
           </div>
-          ${isOwner ? `<button type="button" class="post__delete" data-action="delete" title="Удалить">×</button>` : ''}
+          ${canDelete ? `<button type="button" class="post__delete" data-action="delete" title="Удалить">×</button>` : ''}
         </header>
 
         <div class="post__text">${escapeHtml(post.text).replace(/\n/g, '<br>')}</div>
@@ -109,13 +129,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderComment(c) {
+    const canDelete = c.authorId === currentUser.id || isAdmin;
     return `
-      <div class="comment">
+      <div class="comment" data-comment-id="${c.id}">
         <div class="comment__avatar">${getInitials(c.authorName)}</div>
         <div class="comment__body">
           <div class="comment__head">
             <span class="comment__author">${escapeHtml(c.authorName)}</span>
             <span class="comment__date">${formatDate(c.createdAt)}</span>
+            ${canDelete ? `<button type="button" class="comment__delete" data-action="delete-comment"
+                                   title="Удалить комментарий" aria-label="Удалить комментарий">×</button>` : ''}
           </div>
           <div class="comment__text">${escapeHtml(c.text)}</div>
         </div>
@@ -144,6 +167,14 @@ document.addEventListener('DOMContentLoaded', () => {
       // Удалить пост
       const deleteBtn = postEl.querySelector('[data-action="delete"]');
       deleteBtn?.addEventListener('click', () => handleDelete(postId));
+
+      // Удалить комментарий
+      postEl.querySelectorAll('[data-action="delete-comment"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const commentId = Number(btn.closest('.comment').dataset.commentId);
+          handleDeleteComment(postId, commentId);
+        });
+      });
 
       // Форма комментария
       const commentForm = postEl.querySelector('[data-action="comment-form"]');
@@ -181,6 +212,17 @@ document.addEventListener('DOMContentLoaded', () => {
       await API.addComment(postId, text);
       inputEl.value = '';
       showToast('Комментарий добавлен');
+      loadPosts();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function handleDeleteComment(postId, commentId) {
+    if (!confirm('Удалить комментарий?')) return;
+    try {
+      await API.deleteComment(postId, commentId);
+      showToast('Комментарий удалён');
       loadPosts();
     } catch (err) {
       alert(err.message);
