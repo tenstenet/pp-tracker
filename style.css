@@ -119,16 +119,30 @@ a {
 }
 
 .nav__auth-btn {
-  text-decoration: none;
   font-size: 18px;
   font-weight: 500;
   color: var(--color-dark);
   transition: opacity 0.2s ease;
+  border-radius: 5px;
+  padding: 8px 16px;
 }
 
 .nav__auth-btn:hover {
   opacity: 0.65;
 }
+
+/* ===== Кнопка «Выйти» в шапке ===== */
+.nav__auth-btn {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 11px 24px;
+  border-radius: var(--radius-btn);
+  background: var(--color-primary);
+  color: var(--color-dark);
+  cursor: pointer;
+}
+
 
 /* ============================================
    3. КНОПКИ
@@ -876,6 +890,7 @@ a {
     font-size: 20px;
   }
 }
+
 /* ============================================
    15. ИЗБРАННОЕ (звёздочка на карточках)
    ============================================ */
@@ -915,6 +930,7 @@ a {
 
 .product-card__fav_active:hover {
   opacity: 0.85;
+
 }/* ============================================
    16. ПРОФИЛЬ
    ============================================ */
@@ -1008,7 +1024,6 @@ a {
   margin-bottom: 60px;
 }
 
-/* Адаптив */
 @media (max-width: 640px) {
   .profile-stats {
     grid-template-columns: 1fr;
@@ -1262,7 +1277,6 @@ a {
   font-size: 14px;
 }
 
-/* Адаптив */
 @media (max-width: 640px) {
   .wall-form {
     flex-direction: column;
@@ -1288,8 +1302,6 @@ a {
     width: 100%;
   }
 }
-
-/* ===== FoodDiary: дополнения. Допиши в конец style.css ===== */
 
 /* фильтр категорий рядом с поиском */
 .products-toolbar .form__select {
@@ -1345,3 +1357,59 @@ a {
 #recipe-steps-list li {
   margin-bottom: 8px;
 }
+/* фильтр категорий рядом с поиском */
+.products-toolbar .form__select {
+  flex: 0 0 auto;
+  min-width: 200px;
+}
+
+/* ряд кнопок в карточке продукта / рецепта */
+.product-card__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+.product-card__actions + .product-card__actions {
+  margin-top: 0;
+}
+.product-card__actions .button {
+  flex: 1;
+  margin-top: 0;
+  padding: 10px 14px;
+  font-size: 15px;
+  text-align: center;
+}
+
+/* удаление комментария */
+.comment__delete {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-white);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-dark);
+  padding: 0;
+  transition: all 0.2s ease;
+}
+.comment__delete:hover {
+  background: var(--color-error);
+  color: var(--color-white);
+  border-color: var(--color-error);
+}
+
+/* карточка рецепта */
+#recipe-ingredients-list,
+#recipe-steps-list {
+  padding-left: 22px;
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+#recipe-steps-list li {
+  margin-bottom: 8px;
+}
+
+
