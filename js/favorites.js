@@ -30,8 +30,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function loadFavorites() {
     try {
-      favProducts = await API.getFavorites('product');
-      favRecipes  = await API.getFavorites('recipe');
+      const items = await API.getFavorites();
+      favProducts = items.filter(item => item.type === 'product');
+      favRecipes = items.filter(item => item.type === 'recipe');
 
       renderProducts(favProducts);
       renderRecipes(favRecipes);
@@ -195,8 +196,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     clearGramsError();
     const grams = Number(gramsInput.value);
 
-    if (!grams || grams <= 0 || grams > 5000) {
-      document.querySelector('[data-error-for="grams-input"]').textContent = 'Введите число от 1 до 5000';
+    if (!grams || grams < 1 || grams >= 5000) {
+      document.querySelector('[data-error-for="grams-input"]').textContent = 'Введите число от 1 до 4999';
       gramsInput.classList.add('form__input_error');
       return;
     }
