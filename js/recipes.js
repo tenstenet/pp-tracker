@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const field      = (name) => document.getElementById('recipe-' + name);
 
   let recipes = [];
+  let ingredientProducts = [];
+  let formVersion = 0;
   let renderToken = 0; // защита от гонки при быстром вводе в поиск
 
   if (isAdmin) addBtn.style.display = '';
@@ -40,16 +42,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function refresh() {
     const token = ++renderToken;
     try {
-      const [items, favs] = await Promise.all([
-        API.getRecipes({ search: searchInput.value, category: categorySelect.value }),
-        API.getFavorites('recipe').catch(() => [])
-      ]);
+      const items = await API.getRecipes({ search: searchInput.value, category: categorySelect.value });
       if (token !== renderToken) return;
 
       recipes = items;
-      renderGrid(items, new Set(favs.map(f => f.itemId)));
+      renderGrid(items, new Set(items.filter(item => item.isFavorite).map(item => item.id)));
     } catch (err) {
       console.error(err);
+      emptySearch.style.display = 'none';
       grid.style.display = 'grid';
       grid.innerHTML = `<div class="diary-empty" style="grid-column: 1 / -1;">Ошибка: ${escapeHtml(err.message)}</div>`;
     }
@@ -153,26 +153,84 @@ document.addEventListener('DOMContentLoaded', async () => {
   addBtn.addEventListener('click', () => openForm(null));
   rCancel.addEventListener('click', closeForm);
 
-  function openForm(recipe) {
+  // openForm(recipe) — загрузить продукты и открыть редактор рецепта
+  async function openForm(recipe) {
     if (!isAdmin) return;
-    clearFormErrors();
-
-    rTitle.textContent = recipe ? 'Изменить рецепт' : 'Новый рецепт';
-    field('id').value          = recipe ? recipe.id : '';
-    field('name').value        = recipe ? recipe.name : '';
-    field('category').value    = recipe ? recipe.category : Object.keys(categories)[0];
-    field('description').value = recipe ? (recipe.description || '') : '';
-    ['calories', 'protein', 'fats', 'carbs'].forEach(k => {
-      field(k).value = recipe ? recipe[k] : '';
-    });
-    field('ingredients').value = recipe ? (recipe.ingredients || []).join('\n') : '';
-    field('steps').value       = recipe ? (recipe.steps || []).join('\n') : '';
-
-    adminPanel.style.display = 'block';
-    adminPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const version = ++formVersion;
+    try {
+      const items = await API.getProducts();
+      if (version !== formVersion) return;
+      ingredientProducts = items;
+      clearFormErrors();
+      rTitle.textContent = recipe ? 'Изменить рецепт' : 'Новый рецепт';
+      field('id').value = recipe ? recipe.id : '';
+      field('name').value = recipe ? recipe.name : '';
+      field('category').value = recipe ? recipe.category : Object.keys(categories)[0];
+      field('description').value = recipe ? recipe.description : '';
+      field('steps').value = recipe ? recipe.steps.join('\n') : '';
+      field('ingredients').replaceChildren();
+      const ingredients = recipe ? recipe.ingredientItems : [];
+      if (ingredients.length) ingredients.forEach(addIngredientRow);
+      else addIngredientRow();
+      updateNutritionPreview();
+      adminPanel.style.display = 'block';
+      adminPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+      showToast('Не удалось открыть рецепт: ' + error.message);
+    }
   }
 
+  // addIngredientRow(item) — добавить выбор продукта и его граммовки
+  function addIngredientRow(item = {}) {
+    const row = document.createElement('div');
+    row.className = 'recipe-ingredient-row';
+    const select = document.createElement('select');
+    select.className = 'form__select';
+    select.setAttribute('aria-label', 'Продукт');
+    select.add(new Option('Выберите продукт', ''));
+    ingredientProducts.forEach(product => select.add(new Option(product.name, product.id)));
+    select.value = item.product_id || '';
+    const grams = document.createElement('input');
+    grams.type = 'number';
+    grams.className = 'form__input';
+    grams.min = '0.01';
+    grams.max = '4999.99';
+    grams.step = '0.01';
+    grams.placeholder = 'Граммы';
+    grams.setAttribute('aria-label', 'Количество в граммах');
+    grams.value = item.amount_grams || 100;
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'button button_theme_outline';
+    remove.textContent = 'Убрать';
+    remove.addEventListener('click', () => { row.remove(); updateNutritionPreview(); });
+    select.addEventListener('change', updateNutritionPreview);
+    grams.addEventListener('input', updateNutritionPreview);
+    row.append(select, grams, remove);
+    field('ingredients').append(row);
+  }
+
+  // updateNutritionPreview() — показать КБЖУ выбранных ингредиентов
+  function updateNutritionPreview() {
+    const totals = { calories: 0, protein: 0, fats: 0, carbs: 0 };
+    field('ingredients').querySelectorAll('.recipe-ingredient-row').forEach(row => {
+      const product = ingredientProducts.find(item => item.id === Number(row.querySelector('select').value));
+      const grams = Number(row.querySelector('input').value);
+      if (!product || !Number.isFinite(grams) || grams <= 0 || grams >= 5000) return;
+      Object.keys(totals).forEach(key => { totals[key] += product[key] * grams / 100; });
+    });
+    document.getElementById('recipe-nutrition').textContent =
+      'Одна порция — весь рецепт: ' + Math.round(totals.calories) + ' ккал · Б ' + totals.protein.toFixed(1) +
+      ' · Ж ' + totals.fats.toFixed(1) + ' · У ' + totals.carbs.toFixed(1);
+  }
+
+  document.getElementById('recipe-add-ingredient').addEventListener('click', () => {
+    addIngredientRow();
+    updateNutritionPreview();
+  });
+
   function closeForm() {
+    formVersion++;
     adminPanel.style.display = 'none';
   }
 
@@ -184,6 +242,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!data) return;
 
     const id = field('id').value;
+    const submit = rForm.querySelector('button[type="submit"]');
+    if (submit.disabled) return;
+    submit.disabled = true;
     try {
       if (id) await API.updateRecipe(Number(id), data);
       else    await API.addRecipe(data);
@@ -193,6 +254,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       refresh();
     } catch (err) {
       showFormError('recipe-name', err.message);
+    } finally {
+      submit.disabled = false;
     }
   });
 
@@ -211,23 +274,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     const description = field('description').value.trim();
     if (description.length > 120) fail('recipe-description', 'Не больше 120 символов');
 
-    const values = {};
-    [['calories', 3000, 'ккал'], ['protein', 300, 'г'], ['fats', 300, 'г'], ['carbs', 500, 'г']].forEach(([k, max, unit]) => {
-      const raw = field(k).value.trim();
-      const n = Number(raw);
-      if (raw === '' || !isFinite(n)) return fail('recipe-' + k, 'Введите число');
-      if (n < 0) return fail('recipe-' + k, 'Не меньше 0');
-      if (n > max) return fail('recipe-' + k, `Не больше ${max} ${unit}`);
-      values[k] = n;
+    const ingredients = [];
+    const seen = new Set();
+    field('ingredients').querySelectorAll('.recipe-ingredient-row').forEach(row => {
+      const productId = Number(row.querySelector('select').value);
+      const grams = Number(row.querySelector('input').value);
+      if (!ingredientProducts.some(product => product.id === productId)) {
+        fail('recipe-ingredients', 'Выберите продукт для каждого ингредиента');
+      } else if (seen.has(productId)) {
+        fail('recipe-ingredients', 'Продукт повторяется. Объедините его граммовку в одной строке');
+      }
+      if (!Number.isFinite(grams) || grams <= 0 || grams >= 5000) {
+        fail('recipe-ingredients', 'Граммовка каждого ингредиента должна быть больше 0 и меньше 5000');
+      }
+      seen.add(productId);
+      ingredients.push({ product_id: productId, amount_grams: grams });
     });
-
-    const ingredients = lines(field('ingredients').value);
-    if (ingredients.length === 0) fail('recipe-ingredients', 'Добавьте хотя бы один ингредиент');
+    if (!ingredients.length) fail('recipe-ingredients', 'Добавьте хотя бы один ингредиент');
 
     const steps = lines(field('steps').value);
     if (steps.length === 0) fail('recipe-steps', 'Добавьте хотя бы один шаг');
 
-    return ok ? { name, category, description, ...values, ingredients, steps } : null;
+    return ok ? { name, category, description, ingredients, steps } : null;
   }
 
   async function deleteRecipe(id) {
