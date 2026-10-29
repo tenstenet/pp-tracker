@@ -91,31 +91,12 @@
           </div>
 
           <div class="form__group">
-            <label for="recipe-calories" class="form__label">Калории на порцию, ккал</label>
-            <input type="number" id="recipe-calories" class="form__input" min="0" step="any" required>
-            <span class="form__error" data-error-for="recipe-calories"></span>
-          </div>
-          <div class="form__group">
-            <label for="recipe-protein" class="form__label">Белки на порцию, г</label>
-            <input type="number" id="recipe-protein" class="form__input" min="0" step="any" required>
-            <span class="form__error" data-error-for="recipe-protein"></span>
-          </div>
-          <div class="form__group">
-            <label for="recipe-fats" class="form__label">Жиры на порцию, г</label>
-            <input type="number" id="recipe-fats" class="form__input" min="0" step="any" required>
-            <span class="form__error" data-error-for="recipe-fats"></span>
-          </div>
-          <div class="form__group">
-            <label for="recipe-carbs" class="form__label">Углеводы на порцию, г</label>
-            <input type="number" id="recipe-carbs" class="form__input" min="0" step="any" required>
-            <span class="form__error" data-error-for="recipe-carbs"></span>
-          </div>
-
-          <div class="form__group">
-            <label for="recipe-ingredients" class="form__label">Ингредиенты (по одному в строке, например: Овсянка — 50 г)</label>
-            <textarea id="recipe-ingredients" class="form__textarea" rows="5" required></textarea>
+            <p class="form__label">Ингредиенты</p>
+            <div id="recipe-ingredients" class="recipe-ingredient-list"></div>
+            <button type="button" id="recipe-add-ingredient" class="button button_theme_outline">Добавить ингредиент</button>
             <span class="form__error" data-error-for="recipe-ingredients"></span>
           </div>
+          <p id="recipe-nutrition" aria-live="polite">КБЖУ рассчитывается по выбранным продуктам. Одна порция — весь рецепт.</p>
 
           <div class="form__group">
             <label for="recipe-steps" class="form__label">Шаги приготовления (по одному в строке)</label>
