@@ -1413,3 +1413,12 @@ a {
 }
 
 
+
+/* Редактор ингредиентов рецепта */
+.recipe-ingredient-list { display: grid; gap: 12px; margin-bottom: 12px; }
+.recipe-ingredient-row { display: grid; grid-template-columns: minmax(0, 1fr) 130px auto; gap: 10px; align-items: center; }
+.recipe-ingredient-row > * { min-width: 0; }
+@media (max-width: 640px) {
+  .recipe-ingredient-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .recipe-ingredient-row select { grid-column: 1 / -1; }
+}
