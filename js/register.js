@@ -29,8 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
       showError('reg-email', 'Некорректный email');
       hasError = true;
     }
-    if (pass.length < 6) {
-      showError('reg-password', 'Пароль от 6 символов');
+    if (pass.length < 8) {
+      showError('reg-password', 'Пароль от 8 символов');
       hasError = true;
     }
     if (pass !== pass2) {
@@ -75,4 +75,4 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.disabled = isLoading;
     btn.textContent = isLoading ? 'Создаём...' : 'Создать аккаунт';
   }
-});
+});
