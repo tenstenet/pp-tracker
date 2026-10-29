@@ -101,6 +101,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function loadAndRender() {
     const dateAtRequest = currentDate;
+    productsList.textContent = 'Загрузка…';
+    recipesList.textContent = 'Загрузка…';
+    [totalCaloriesEl, totalProteinEl, totalFatsEl, totalCarbsEl].forEach(element => { element.textContent = '…'; });
     try {
       const meals = await API.getMeals(dateAtRequest);
       if (dateAtRequest !== currentDate) return; // пользователь уже перешёл на другой день
@@ -109,7 +112,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       renderList(recipesList,  meals.filter(m => m.type === 'recipe'));
       renderSummary(meals);
     } catch (err) {
-      console.error(err);
+      if (dateAtRequest !== currentDate) return;
+      productsList.textContent = 'Не удалось загрузить дневник: ' + err.message;
+      recipesList.textContent = '';
+      [totalCaloriesEl, totalProteinEl, totalFatsEl, totalCarbsEl].forEach(element => { element.textContent = '—'; });
     }
   }
 
