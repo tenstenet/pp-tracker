@@ -8,7 +8,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('back-link').href = `diary.html?date=${dateFromURL}`;
 
   const isAdmin    = API.isAdmin();
+  try {
+    await API.getCategories();
+  } catch (error) {
+    document.getElementById('products-grid').textContent = 'Не удалось загрузить категории: ' + error.message;
+    return;
+  }
   const categories = API.PRODUCT_CATEGORIES;
+  // Заполняем оба списка категориями, существующими в базе данных.
+  ['category-filter', 'product-category'].forEach(id => {
+    const select = document.getElementById(id);
+    select.replaceChildren();
+    if (id === 'category-filter') select.add(new Option('Все категории', ''));
+    Object.entries(categories).forEach(([slug, name]) => select.add(new Option(name, slug)));
+  });
 
   // ---- Элементы ----
   const grid           = document.getElementById('products-grid');
@@ -47,16 +60,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function refresh() {
     const token = ++renderToken;
     try {
-      const [items, favs] = await Promise.all([
-        API.getProducts({ search: searchInput.value, category: categorySelect.value }),
-        API.getFavorites('product').catch(() => [])
-      ]);
+      const items = await API.getProducts({ search: searchInput.value, category: categorySelect.value });
       if (token !== renderToken) return; // пришёл устаревший ответ
 
       products = items;
-      renderGrid(items, new Set(favs.map(f => f.itemId)));
+      renderGrid(items, new Set(items.filter(item => item.isFavorite).map(item => item.id)));
     } catch (err) {
       console.error(err);
+      emptySearch.style.display = 'none';
       grid.style.display = 'grid';
       grid.innerHTML = `<div class="diary-empty" style="grid-column: 1 / -1;">Ошибка: ${escapeHtml(err.message)}</div>`;
     }
@@ -180,8 +191,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     errEl.textContent = '';
     gramsInput.classList.remove('form__input_error');
 
-    if (!grams || grams <= 0 || grams > 5000) {
-      errEl.textContent = 'Введите число от 1 до 5000';
+    if (!grams || grams < 1 || grams >= 5000) {
+      errEl.textContent = 'Введите число от 1 до 4999';
       gramsInput.classList.add('form__input_error');
       return;
     }
@@ -244,6 +255,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!data) return;
 
     const id = field('id').value;
+    const submit = pForm.querySelector('button[type="submit"]');
+    if (submit.disabled) return;
+    submit.disabled = true;
     try {
       if (id) await API.updateProduct(Number(id), data);
       else    await API.addProduct(data);
@@ -253,6 +267,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       refresh();
     } catch (err) {
       showFormError('product-name', err.message);
+    } finally {
+      submit.disabled = false;
     }
   });
 
