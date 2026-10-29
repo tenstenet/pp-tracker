@@ -204,6 +204,13 @@ const API = {
   PRODUCT_CATEGORIES,
   RECIPE_CATEGORIES,
 
+  // getImageUrl(path) — получить адрес фотографии на сервере
+  getImageUrl(path) {
+    if (!path) return '';
+    const relativePath = String(path).replace(/^\/+/, '').replace(/^media\//, '');
+    return API_BASE_URL.replace(/\/$/, '') + '/media/' + relativePath;
+  },
+
   // ==================== ПОЛЬЗОВАТЕЛИ ====================
 
   async register({ name, email, password }) {

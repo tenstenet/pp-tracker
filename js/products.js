@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const isFav = favIds.has(p.id);
       return `
         <div class="product-card">
+          ${p.imagePath ? `<img class="product-card__image" src="${escapeHtml(API.getImageUrl(p.imagePath))}" alt="${escapeHtml(p.name)}" loading="lazy">` : ''}
           <div class="product-card__head">
             <div class="product-card__name">${escapeHtml(p.name)}</div>
             <button type="button" class="product-card__fav ${isFav ? 'product-card__fav_active' : ''}"

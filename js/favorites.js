@@ -57,6 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     productsContainer.innerHTML = items.map(p => `
       <div class="product-card">
+        ${p.imagePath ? `<img class="product-card__image" src="${escapeHtml(API.getImageUrl(p.imagePath))}" alt="${escapeHtml(p.name)}" loading="lazy">` : ''}
         <div class="product-card__head">
           <div class="product-card__name">${escapeHtml(p.name)}</div>
           <button type="button" class="product-card__fav product-card__fav_active"
@@ -91,6 +92,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     recipesContainer.innerHTML = items.map(r => `
       <div class="product-card">
+        ${r.imagePath ? `<img class="product-card__image" src="${escapeHtml(API.getImageUrl(r.imagePath))}" alt="${escapeHtml(r.name)}" loading="lazy">` : ''}
         <div class="product-card__head">
           <div class="product-card__name">
             <a href="recipe.html?id=${r.itemId}&date=${dateFromURL}" style="color: inherit; text-decoration: none;">${escapeHtml(r.name)}</a>

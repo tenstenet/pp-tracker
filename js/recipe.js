@@ -56,6 +56,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function render() {
+    cardEl.querySelector('.product-card__image')?.remove();
+    if (recipe.imagePath) {
+      const image = document.createElement('img');
+      image.className = 'product-card__image product-card__image_detail';
+      image.src = API.getImageUrl(recipe.imagePath);
+      image.alt = recipe.name;
+      cardEl.prepend(image);
+    }
     document.title = `${recipe.name} — FoodDiary`;
     titleEl.textContent = recipe.name;
     categoryEl.textContent = API.RECIPE_CATEGORIES[recipe.category] || '';
