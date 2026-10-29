@@ -8,6 +8,8 @@
 // Учётная запись администратора (mock): admin@fooddiary.ru / admin123
 
 const USE_MOCK = true;
+const API_BASE_URL = 'http://127.0.0.1:8000';
+
 
 const ADMIN_SEED = {
   id: 1,
@@ -222,20 +224,128 @@ function _qs(params) {
   return s ? '?' + s : '';
 }
 
-async function _http(method, url, body) {
-  const res = await fetch(url, {
-    method,
-    headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
-    credentials: 'include',
-    body: body !== undefined ? JSON.stringify(body) : undefined
-  });
-  if (!res.ok) {
-    let msg = '';
-    try { msg = (await res.json()).error; } catch (e) { /* тело не JSON */ }
-    throw new Error(msg || `Ошибка запроса (${res.status})`);
+let _refreshRequest = null;
+
+function _clearSession() {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('currentUser');
+}
+
+function _requireLogin() {
+  _clearSession();
+  const page = location.pathname.split('/').pop();
+  if (page && page !== 'index.html' && page !== 'register.html') {
+    location.replace('index.html');
   }
+}
+
+async function _refreshAccessToken() {
+  if (_refreshRequest) return _refreshRequest;
+
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) {
+    _requireLogin();
+    throw new Error('Войдите в аккаунт заново');
+  }
+
+  _refreshRequest = (async () => {
+    const res = await fetch(API_BASE_URL + '/users/access-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    });
+
+    if (localStorage.getItem('refresh_token') !== refreshToken) {
+      throw new Error('Состояние входа изменилось. Повторите действие');
+    }
+
+    if (res.status === 401) {
+      _requireLogin();
+      throw new Error('Срок входа истёк. Войдите в аккаунт заново');
+    }
+    if (!res.ok) throw new Error('Не удалось обновить токен. Повторите действие позже');
+
+    const data = await res.json();
+    if (typeof data.access_token !== 'string' || !data.access_token) {
+      throw new Error('Сервер не вернул access-токен');
+    }
+    if (localStorage.getItem('refresh_token') !== refreshToken) {
+      throw new Error('Состояние входа изменилось. Повторите действие');
+    }
+
+    localStorage.setItem('access_token', data.access_token);
+    return data.access_token;
+  })();
+
+  try {
+    return await _refreshRequest;
+  } finally {
+    _refreshRequest = null;
+  }
+}
+
+async function _http(method, url, body, retry = true) {
+  const headers = {};
+  const token = localStorage.getItem('access_token');
+  const isForm = body instanceof URLSearchParams;
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  if (body !== undefined && !isForm) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const res = await fetch(API_BASE_URL + url, {
+    method,
+    headers,
+    body: body === undefined
+      ? undefined
+      : isForm
+        ? body
+        : JSON.stringify(body)
+  });
+
+  const isProtected = ![
+    '/users/token', '/users/register', '/users/logout',
+    '/users/access-token', '/users/refresh-token'
+  ].includes(url);
+
+  if (res.status === 401 && isProtected) {
+    if (retry) {
+      // Параллельный запрос мог уже получить новый токен.
+      if (localStorage.getItem('access_token') === token) {
+        await _refreshAccessToken();
+      }
+      return _http(method, url, body, false);
+    }
+    _requireLogin();
+    throw new Error('Войдите в аккаунт заново');
+  }
+
+  if (!res.ok) {
+    let message = `Ошибка запроса (${res.status})`;
+
+    try {
+      const data = await res.json();
+
+      if (typeof data.detail === 'string') {
+        message = data.detail;
+      } else if (Array.isArray(data.detail)) {
+        message = data.detail.map(error => error.msg).join('; ');
+      }
+    } catch {
+      // Оставляем сообщение с кодом ошибки.
+    }
+
+    throw new Error(message);
+  }
+
   if (res.status === 204) return null;
-  try { return await res.json(); } catch (e) { return null; }
+
+  return res.json();
 }
 
 function _num(value) {
@@ -371,43 +481,56 @@ const API = {
   // ==================== ПОЛЬЗОВАТЕЛИ ====================
 
   async register({ name, email, password }) {
-    if (USE_MOCK) {
-      email = email.trim().toLowerCase();
-      const users = _load('users', []);
-      if (users.some(u => u.email === email)) {
-        throw new Error('Пользователь с таким email уже существует');
-      }
-      const user = { id: _uid(), name: name.trim(), email, password, role: 'user', registeredAt: Date.now() };
-      users.push(user);
-      _save('users', users);
-      this._setSession(user);
-      return this._safe(user);
-    }
+    await _http('POST', '/users/register', {
+      name: name.trim(),
+      email: email.trim(),
+      password
+    });
 
-    const user = await _http('POST', '/api/register', { name, email, password });
-    this._setSession(user);
-    return user;
+    return this.login({ email, password });
   },
 
   async login({ email, password }) {
-    if (USE_MOCK) {
-      email = email.trim().toLowerCase();
-      const user = _load('users', []).find(u => u.email === email && u.password === password);
-      if (!user) throw new Error('Неверный email или пароль');
-      this._setSession(user);
-      return this._safe(user);
-    }
+    const form = new URLSearchParams();
+    form.set('username', email.trim());
+    form.set('password', password);
 
-    const user = await _http('POST', '/api/login', { email, password });
-    this._setSession(user);
-    return user;
+    const tokens = await _http('POST', '/users/token', form);
+
+    localStorage.setItem('access_token', tokens.access_token);
+    localStorage.setItem('refresh_token', tokens.refresh_token);
+
+    try {
+      const profile = await _http('GET', '/profile');
+
+      const user = {
+        ...profile,
+        registeredAt: profile.created_at
+      };
+
+      this._setSession(user);
+      return user;
+    } catch (error) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('currentUser');
+      throw error;
+    }
   },
 
   async logout() {
-    if (!USE_MOCK) {
-      try { await _http('POST', '/api/logout'); } catch (e) { /* чистим локально в любом случае */ }
+    try {
+      if (localStorage.getItem('access_token')) {
+        await _http('POST', '/users/logout');
+      }
+    } catch (error) {
+      // Выходим локально даже при истёкшем токене или недоступном сервере.
+      console.warn('Не удалось подтвердить выход на сервере:', error.message);
+    } finally {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('currentUser');
     }
-    localStorage.removeItem('currentUser');
   },
 
   getCurrentUser() {
