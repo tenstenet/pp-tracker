@@ -34,8 +34,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       recipe = Number.isInteger(recipeId) && recipeId > 0 ? await API.getRecipe(recipeId) : null;
     } catch (err) {
-      console.error(err);
-      recipe = null;
+      titleEl.textContent = err.status === 404 ? 'Рецепт не найден' : 'Не удалось загрузить рецепт';
+      cardEl.style.display = 'none';
+      notFoundEl.style.display = 'block';
+      notFoundEl.textContent = err.status === 404 ? 'Этот рецепт удалён или не существует.' : err.message;
+      return;
     }
 
     if (!recipe) {
@@ -48,11 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     render();
 
-    try {
-      isFav = await API.isFavorite('recipe', recipe.id);
-    } catch (err) {
-      isFav = false;
-    }
+    isFav = recipe.isFavorite;
     renderFav();
   }
 
