@@ -51,6 +51,31 @@
       <div id="fav-products" class="products-grid"></div>
     </section>
 
+    <!-- Панель граммовки  -->
+    <section id="grams-panel" class="grams-panel" style="display:none;">
+      <div class="card grams-panel__card">
+        <div class="grams-panel__head">
+          <div>
+            <h2 class="grams-panel__title" id="selected-product-name">—</h2>
+            <p class="grams-panel__kbju" id="selected-product-kbju">—</p>
+          </div>
+          <button type="button" class="grams-panel__close" id="cancel-selection" aria-label="Отменить выбор">×</button>
+        </div>
+
+        <form id="grams-form" class="grams-panel__form">
+          <div class="form__group">
+            <label for="grams-input" class="form__label">Сколько грамм?</label>
+            <input type="number" id="grams-input" class="form__input" min="1" max="5000" value="100" required>
+            <span class="form__error" data-error-for="grams-input"></span>
+          </div>
+
+          <div class="grams-panel__preview" id="preview"></div>
+
+          <button type="submit" class="button button_theme_green button_full">Добавить в дневник</button>
+        </form>
+      </div>
+    </section>
+
     <!-- Избранные рецепты -->
     <section class="diary-section">
       <div class="diary-section__head">
