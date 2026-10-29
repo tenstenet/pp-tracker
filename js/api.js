@@ -1,227 +1,15 @@
-// js/api.js
-//
-// Слой работы с данными.
-// СЕЙЧАС: localStorage (mock).
-// ПОТОМ:  те же методы через fetch('/api/...'). Страницы обращаются только к API,
-//         поэтому при подключении бэкенда достаточно поставить USE_MOCK = false.
-//
-// Учётная запись администратора (mock): admin@fooddiary.ru / admin123
-
-const USE_MOCK = true;
+// Слой запросов к FastAPI. В localStorage хранятся только токены входа.
 const API_BASE_URL = 'http://127.0.0.1:8000';
+const PRODUCT_CATEGORIES = {};
+const RECIPE_CATEGORIES = { mass: 'Массонабор', loss: 'Похудение', balance: 'Баланс' };
 
-
-const ADMIN_SEED = {
-  id: 1,
-  name: 'Администратор',
-  email: 'admin@fooddiary.ru',
-  password: 'admin123',
-  role: 'admin'
-};
-
-const PRODUCT_CATEGORIES = {
-  grains: 'Крупы и макароны',
-  meat: 'Мясо и рыба',
-  dairy: 'Молочные продукты и яйца',
-  vegetables: 'Овощи',
-  fruits: 'Фрукты и ягоды',
-  nuts: 'Орехи и семена',
-  bread: 'Хлеб',
-  oils: 'Масла и сладкое'
-};
-
-const RECIPE_CATEGORIES = {
-  mass: 'Массонабор',
-  loss: 'Похудение',
-  balance: 'Баланс'
-};
-
-// ============ НАЧАЛЬНЫЕ ДАННЫЕ СПРАВОЧНИКОВ ============
-// Продукты: КБЖУ на 100 г. Рецепты: КБЖУ на 1 порцию.
-
-const PRODUCTS_SEED = [
-  { id: 1, name: 'Овсянка (сухая)', category: 'grains', calories: 350, protein: 12, fats: 6, carbs: 60 },
-  { id: 2, name: 'Рис белый (сухой)', category: 'grains', calories: 344, protein: 7, fats: 1, carbs: 78 },
-  { id: 3, name: 'Рис бурый (сухой)', category: 'grains', calories: 337, protein: 8, fats: 3, carbs: 72 },
-  { id: 4, name: 'Гречка (сухая)', category: 'grains', calories: 343, protein: 13, fats: 3, carbs: 72 },
-  { id: 5, name: 'Макароны (сухие)', category: 'grains', calories: 350, protein: 12, fats: 1, carbs: 72 },
-  { id: 6, name: 'Булгур (сухой)', category: 'grains', calories: 342, protein: 12, fats: 1, carbs: 76 },
-  { id: 7, name: 'Кускус (сухой)', category: 'grains', calories: 376, protein: 13, fats: 1, carbs: 77 },
-  { id: 10, name: 'Куриная грудка', category: 'meat', calories: 165, protein: 31, fats: 4, carbs: 0 },
-  { id: 11, name: 'Куриное бедро', category: 'meat', calories: 185, protein: 25, fats: 9, carbs: 0 },
-  { id: 12, name: 'Индейка (грудка)', category: 'meat', calories: 104, protein: 19, fats: 2, carbs: 0 },
-  { id: 13, name: 'Говядина', category: 'meat', calories: 187, protein: 26, fats: 9, carbs: 0 },
-  { id: 14, name: 'Свинина (шейка)', category: 'meat', calories: 343, protein: 16, fats: 31, carbs: 0 },
-  { id: 15, name: 'Лосось', category: 'meat', calories: 208, protein: 20, fats: 13, carbs: 0 },
-  { id: 16, name: 'Треска', category: 'meat', calories: 82, protein: 18, fats: 1, carbs: 0 },
-  { id: 17, name: 'Тунец (консервы)', category: 'meat', calories: 116, protein: 25, fats: 1, carbs: 0 },
-  { id: 20, name: 'Яйцо куриное', category: 'dairy', calories: 143, protein: 13, fats: 10, carbs: 1 },
-  { id: 21, name: 'Молоко 2.5%', category: 'dairy', calories: 52, protein: 3, fats: 3, carbs: 5 },
-  { id: 22, name: 'Творог 5%', category: 'dairy', calories: 121, protein: 17, fats: 5, carbs: 3 },
-  { id: 23, name: 'Творог обезжиренный', category: 'dairy', calories: 71, protein: 18, fats: 0, carbs: 1 },
-  { id: 24, name: 'Кефир 1%', category: 'dairy', calories: 40, protein: 3, fats: 1, carbs: 4 },
-  { id: 25, name: 'Сыр твердый', category: 'dairy', calories: 380, protein: 24, fats: 30, carbs: 0 },
-  { id: 26, name: 'Йогурт натуральный', category: 'dairy', calories: 66, protein: 4, fats: 4, carbs: 4 },
-  { id: 30, name: 'Огурец', category: 'vegetables', calories: 15, protein: 1, fats: 0, carbs: 3 },
-  { id: 31, name: 'Помидор', category: 'vegetables', calories: 18, protein: 1, fats: 0, carbs: 4 },
-  { id: 32, name: 'Брокколи', category: 'vegetables', calories: 34, protein: 3, fats: 0, carbs: 7 },
-  { id: 33, name: 'Морковь', category: 'vegetables', calories: 41, protein: 1, fats: 0, carbs: 10 },
-  { id: 34, name: 'Картофель', category: 'vegetables', calories: 77, protein: 2, fats: 0, carbs: 17 },
-  { id: 35, name: 'Капуста белокочанная', category: 'vegetables', calories: 25, protein: 1, fats: 0, carbs: 6 },
-  { id: 36, name: 'Перец болгарский', category: 'vegetables', calories: 27, protein: 1, fats: 0, carbs: 6 },
-  { id: 37, name: 'Лук репчатый', category: 'vegetables', calories: 40, protein: 1, fats: 0, carbs: 9 },
-  { id: 40, name: 'Яблоко', category: 'fruits', calories: 52, protein: 0, fats: 0, carbs: 14 },
-  { id: 41, name: 'Банан', category: 'fruits', calories: 89, protein: 1, fats: 0, carbs: 23 },
-  { id: 42, name: 'Апельсин', category: 'fruits', calories: 47, protein: 1, fats: 0, carbs: 12 },
-  { id: 43, name: 'Груша', category: 'fruits', calories: 57, protein: 0, fats: 0, carbs: 15 },
-  { id: 44, name: 'Виноград', category: 'fruits', calories: 69, protein: 1, fats: 0, carbs: 18 },
-  { id: 45, name: 'Клубника', category: 'fruits', calories: 32, protein: 1, fats: 0, carbs: 8 },
-  { id: 46, name: 'Черника', category: 'fruits', calories: 57, protein: 1, fats: 0, carbs: 14 },
-  { id: 50, name: 'Миндаль', category: 'nuts', calories: 579, protein: 21, fats: 50, carbs: 22 },
-  { id: 51, name: 'Грецкий орех', category: 'nuts', calories: 654, protein: 15, fats: 65, carbs: 14 },
-  { id: 52, name: 'Семечки подсолнечника', category: 'nuts', calories: 584, protein: 21, fats: 51, carbs: 20 },
-  { id: 60, name: 'Хлеб белый', category: 'bread', calories: 265, protein: 9, fats: 3, carbs: 49 },
-  { id: 61, name: 'Хлеб ржаной', category: 'bread', calories: 250, protein: 7, fats: 3, carbs: 48 },
-  { id: 62, name: 'Батон', category: 'bread', calories: 264, protein: 8, fats: 3, carbs: 50 },
-  { id: 70, name: 'Масло оливковое', category: 'oils', calories: 884, protein: 0, fats: 100, carbs: 0 },
-  { id: 71, name: 'Масло сливочное', category: 'oils', calories: 717, protein: 1, fats: 81, carbs: 0 },
-  { id: 72, name: 'Сахар', category: 'oils', calories: 387, protein: 0, fats: 0, carbs: 100 },
-  { id: 73, name: 'Мёд', category: 'oils', calories: 304, protein: 0, fats: 0, carbs: 82 },
-  { id: 74, name: 'Шоколад темный', category: 'oils', calories: 546, protein: 5, fats: 31, carbs: 61 },
-];
-
-const RECIPES_SEED = [
-  {
-    id: 1, name: "Овсяноблин с творогом", category: "balance",
-    description: "Овсянка, яйцо, творог, зелень",
-    calories: 320, protein: 25, fats: 10, carbs: 30,
-    ingredients: ["Овсяные хлопья — 40 г", "Яйцо — 1 шт.", "Творог 5% — 100 г", "Зелень — 10 г", "Соль — по вкусу"],
-    steps: ["Смешать хлопья с яйцом и двумя столовыми ложками воды, оставить на 5 минут.", "Вылить массу на разогретую сковороду и обжарить с двух сторон по 2–3 минуты.", "Творог смешать с мелко нарезанной зеленью.", "Выложить начинку на овсяноблин и свернуть."]
-  },
-  {
-    id: 2, name: "Греческий салат", category: "loss",
-    description: "Огурец, помидор, сыр фета, оливки, масло",
-    calories: 280, protein: 8, fats: 22, carbs: 10,
-    ingredients: ["Огурец — 100 г", "Помидор — 120 г", "Сыр фета — 40 г", "Оливки — 30 г", "Оливковое масло — 1 ч. л."],
-    steps: ["Нарезать огурец и помидор крупными кубиками.", "Добавить оливки и нарезанную фету.", "Заправить маслом и аккуратно перемешать."]
-  },
-  {
-    id: 3, name: "Куриное филе с овощами", category: "loss",
-    description: "Курица, брокколи, перец, лук",
-    calories: 340, protein: 42, fats: 10, carbs: 15,
-    ingredients: ["Куриная грудка — 150 г", "Брокколи — 100 г", "Перец болгарский — 80 г", "Лук репчатый — 40 г", "Оливковое масло — 1 ч. л."],
-    steps: ["Курицу нарезать кубиками, овощи — крупными кусочками.", "Обжарить курицу на масле 6–7 минут до золотистой корочки.", "Добавить лук и перец, готовить 3 минуты.", "Положить брокколи, накрыть крышкой и тушить 5 минут."]
-  },
-  {
-    id: 4, name: "Творожная запеканка", category: "balance",
-    description: "Творог, яйцо, мёд, изюм",
-    calories: 260, protein: 22, fats: 8, carbs: 25,
-    ingredients: ["Творог 5% — 200 г", "Яйцо — 1 шт.", "Мёд — 1 ст. л.", "Изюм — 20 г", "Манная крупа — 1 ст. л."],
-    steps: ["Смешать творог, яйцо, мёд и манную крупу.", "Добавить промытый изюм.", "Выложить в форму и выпекать при 180 °C 30–35 минут.", "Перед подачей остудить 10 минут."]
-  },
-  {
-    id: 5, name: "Смузи с бананом и клубникой", category: "balance",
-    description: "Банан, клубника, йогурт, мёд",
-    calories: 210, protein: 6, fats: 3, carbs: 40,
-    ingredients: ["Банан — 1 шт. (120 г)", "Клубника — 100 г", "Йогурт натуральный — 100 г", "Мёд — 1 ч. л."],
-    steps: ["Банан нарезать, клубнику промыть.", "Сложить все ингредиенты в блендер.", "Взбить около минуты до однородности."]
-  },
-  {
-    id: 6, name: "Лосось с рисом", category: "mass",
-    description: "Лосось, рис, лимон, зелень",
-    calories: 480, protein: 32, fats: 18, carbs: 45,
-    ingredients: ["Лосось — 150 г", "Рис белый (сухой) — 60 г", "Лимон — 1/4 шт.", "Зелень — 10 г"],
-    steps: ["Рис промыть и сварить до готовности (около 15 минут).", "Лосось посолить и сбрызнуть лимонным соком.", "Запекать при 200 °C 12–15 минут.", "Подать с рисом и зеленью."]
-  },
-  {
-    id: 7, name: "Омлет с овощами", category: "balance",
-    description: "Яйца, помидор, перец, зелень",
-    calories: 240, protein: 18, fats: 16, carbs: 6,
-    ingredients: ["Яйцо — 3 шт.", "Помидор — 80 г", "Перец болгарский — 60 г", "Зелень — 10 г"],
-    steps: ["Взбить яйца с щепоткой соли.", "Помидор и перец нарезать и обжарить 2 минуты.", "Залить яйцами, накрыть крышкой и готовить на слабом огне 5–6 минут.", "Посыпать зеленью."]
-  },
-  {
-    id: 8, name: "Киноа с овощами", category: "balance",
-    description: "Киноа, брокколи, морковь, масло",
-    calories: 350, protein: 12, fats: 12, carbs: 50,
-    ingredients: ["Киноа (сухая) — 70 г", "Брокколи — 100 г", "Морковь — 60 г", "Оливковое масло — 1 ч. л."],
-    steps: ["Киноа промыть и варить 15 минут в двойном объёме воды.", "Морковь натереть, брокколи разобрать на соцветия.", "Обжарить овощи на масле 5–7 минут.", "Смешать овощи с киноа."]
-  },
-  {
-    id: 9, name: "Индейка с гречкой", category: "mass",
-    description: "Индейка, гречка, лук, морковь",
-    calories: 420, protein: 38, fats: 8, carbs: 48,
-    ingredients: ["Индейка (грудка) — 150 г", "Гречка (сухая) — 70 г", "Лук репчатый — 40 г", "Морковь — 50 г"],
-    steps: ["Гречку промыть и сварить (около 15 минут).", "Индейку нарезать кусочками, лук и морковь — соломкой.", "Тушить индейку с овощами 15 минут под крышкой.", "Подать с гречкой."]
-  },
-  {
-    id: 10, name: "Салат с тунцом", category: "loss",
-    description: "Тунец, яйцо, огурец, листья салата",
-    calories: 230, protein: 28, fats: 10, carbs: 5,
-    ingredients: ["Тунец (консервы) — 100 г", "Яйцо — 1 шт.", "Огурец — 100 г", "Листья салата — 50 г"],
-    steps: ["Яйцо сварить вкрутую (8–10 минут) и остудить.", "Огурец и яйцо нарезать, листья салата порвать руками.", "Добавить тунец и перемешать; по желанию заправить лимонным соком."]
-  },
-  {
-    id: 11, name: "Протеиновые панкейки", category: "mass",
-    description: "Овсянка, яйцо, банан, протеин",
-    calories: 380, protein: 30, fats: 8, carbs: 45,
-    ingredients: ["Овсяные хлопья — 40 г", "Яйцо — 1 шт.", "Банан — 1 шт. (100 г)", "Протеин — 20 г"],
-    steps: ["Измельчить хлопья в муку.", "Банан размять, добавить яйцо, протеин и муку, перемешать.", "Жарить на сухой сковороде по 2 минуты с каждой стороны."]
-  },
-  {
-    id: 12, name: "Тыквенный суп-пюре", category: "loss",
-    description: "Тыква, морковь, лук, сливки",
-    calories: 190, protein: 4, fats: 8, carbs: 26,
-    ingredients: ["Тыква — 250 г", "Морковь — 60 г", "Лук репчатый — 40 г", "Сливки 10% — 50 мл"],
-    steps: ["Овощи нарезать кубиками.", "Варить в воде около 20 минут до мягкости.", "Пробить блендером и добавить сливки.", "Прогреть 2 минуты, не доводя до кипения."]
-  },
-  {
-    id: 13, name: "Котлеты из индейки на пару", category: "loss",
-    description: "Фарш индейки, лук, яйцо",
-    calories: 250, protein: 30, fats: 10, carbs: 5,
-    ingredients: ["Фарш индейки — 150 г", "Лук репчатый — 30 г", "Яйцо — 1/2 шт."],
-    steps: ["Лук мелко нарезать или натереть, смешать с фаршем и яйцом.", "Посолить и сформировать котлеты.", "Готовить на пару 20–25 минут."]
-  },
-  {
-    id: 14, name: "Шоколадный смузи с овсянкой", category: "mass",
-    description: "Какао, банан, овсянка, молоко",
-    calories: 320, protein: 10, fats: 8, carbs: 52,
-    ingredients: ["Какао — 1 ст. л.", "Банан — 1 шт. (100 г)", "Овсяные хлопья — 30 г", "Молоко 2.5% — 200 мл"],
-    steps: ["Залить хлопья молоком на 10 минут.", "Добавить банан и какао.", "Взбить блендером до однородности."]
-  },
-  {
-    id: 15, name: "Запечённые овощи с сыром", category: "balance",
-    description: "Кабачок, баклажан, перец, сыр",
-    calories: 270, protein: 12, fats: 16, carbs: 20,
-    ingredients: ["Кабачок — 120 г", "Баклажан — 100 г", "Перец болгарский — 80 г", "Сыр твёрдый — 40 г"],
-    steps: ["Овощи нарезать кружками и полосками.", "Выложить на противень и посолить.", "Запекать при 200 °C 20 минут.", "Посыпать тёртым сыром и вернуть в духовку на 5 минут."]
-  },
-];
-
-// ============ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ============
-
-function _uid() {
-  return Date.now() * 1000 + Math.floor(Math.random() * 1000);
-}
-
-function _load(key, fallback) {
-  try {
-    const value = JSON.parse(localStorage.getItem(key));
-    return value === null || value === undefined ? fallback : value;
-  } catch (e) {
-    return fallback;
-  }
-}
-
-function _save(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
+// _qs(params) — собрать параметры адреса запроса
 function _qs(params) {
-  const p = new URLSearchParams();
-  Object.entries(params).forEach(([k, v]) => { if (v) p.set(k, v); });
-  const s = p.toString();
-  return s ? '?' + s : '';
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== '' && value !== null && value !== undefined) query.set(key, value);
+  });
+  return query.size ? '?' + query.toString() : '';
 }
 
 let _refreshRequest = null;
@@ -344,7 +132,9 @@ async function _http(method, url, body, retry = true) {
       // Оставляем сообщение с кодом ошибки.
     }
 
-    throw new Error(message);
+    const error = new Error(message);
+    error.status = res.status;
+    throw error;
   }
 
   if (res.status === 204) return null;
@@ -352,119 +142,62 @@ async function _http(method, url, body, retry = true) {
   return res.json();
 }
 
-function _num(value) {
-  if (value === '' || value === null || value === undefined) throw new Error('Введите число');
-  const n = Number(value);
-  if (!isFinite(n) || n < 0) throw new Error('Некорректное число');
-  return Math.round(n * 10) / 10;
+let _categoryRequest = null;
+let _categories = [];
+
+// _nutrition(data) — привести названия и значения КБЖУ к формату страницы
+function _nutrition(data) {
+  return { calories: Number(data.calories), protein: Number(data.proteins), fats: Number(data.fats), carbs: Number(data.carbs) };
 }
 
-function _cleanProduct(p) {
-  const name = String(p.name || '').trim();
-  if (!name) throw new Error('Введите название');
-  if (!PRODUCT_CATEGORIES[p.category]) throw new Error('Выберите категорию');
-  return {
-    name,
-    category: p.category,
-    calories: _num(p.calories),
-    protein: _num(p.protein),
-    fats: _num(p.fats),
-    carbs: _num(p.carbs)
-  };
+// _product(data) — подготовить продукт для отображения
+function _product(data) {
+  const category = _categories.find(item => item.id === data.category_id);
+  return { id: data.id, name: data.product_name, category: category ? category.slug : '', categoryId: data.category_id,
+    imagePath: data.image_path, isFavorite: data.is_favorite, ..._nutrition(data) };
 }
 
-function _cleanRecipe(r) {
-  const name = String(r.name || '').trim();
-  if (!name) throw new Error('Введите название');
-  if (!RECIPE_CATEGORIES[r.category]) throw new Error('Выберите категорию');
-  const lines = (arr) => (Array.isArray(arr) ? arr : []).map(s => String(s).trim()).filter(Boolean);
-  const ingredients = lines(r.ingredients);
-  const steps = lines(r.steps);
-  if (ingredients.length === 0) throw new Error('Добавьте хотя бы один ингредиент');
-  if (steps.length === 0) throw new Error('Добавьте хотя бы один шаг');
-  return {
-    name,
-    category: r.category,
-    description: String(r.description || '').trim(),
-    calories: _num(r.calories),
-    protein: _num(r.protein),
-    fats: _num(r.fats),
-    carbs: _num(r.carbs),
-    ingredients,
-    steps
-  };
+// _recipe(data) — подготовить рецепт и его ингредиенты для страницы
+function _recipe(data) {
+  return { id: data.id, name: data.recipe_name, category: data.category, description: data.description || '',
+    imagePath: data.image_path, isFavorite: data.is_favorite, ..._nutrition(data.macros || data),
+    ingredientItems: data.ingredients || [],
+    ingredients: (data.ingredients || []).map(item => item.product_name + ' — ' + item.amount_grams + ' г'),
+    steps: [...(data.steps || [])].sort((a, b) => a.step_number - b.step_number).map(item => item.description) };
 }
 
-// ============ ИНИЦИАЛИЗАЦИЯ MOCK-ДАННЫХ ============
-
-// Переносит данные старого формата (без userId, с email вместо id) в новый.
-function _migrate() {
-  const users = _load('users', []).map(u => ({
-    ...u,
-    email: String(u.email || '').toLowerCase(),
-    role: u.role || 'user',
-    registeredAt: u.registeredAt || u.id
-  }));
-  _save('users', users);
-
-  const byEmail = (e) => users.find(u => u.email === String(e || '').toLowerCase());
-  const owner = users.find(u => u.role !== 'admin');
-
-  _save('meals', _load('meals', [])
-    .map(m => (m.userId ? m : (owner ? { ...m, userId: owner.id } : null)))
-    .filter(Boolean));
-
-  _save('favorites', _load('favorites', [])
-    .map(f => ({ userId: f.userId || (owner && owner.id), type: f.type, itemId: f.itemId }))
-    .filter(f => f.userId));
-
-  _save('posts', _load('posts', []).map(p => {
-    if (p.authorId) return p;
-    const author = byEmail(p.authorEmail);
-    if (!author) return null;
-    return {
-      id: p.id,
-      authorId: author.id,
-      text: p.text,
-      createdAt: p.createdAt,
-      likes: (p.likes || []).map(byEmail).filter(Boolean).map(u => u.id),
-      comments: (p.comments || []).map(c => {
-        const a = byEmail(c.authorEmail);
-        return a ? { id: c.id, authorId: a.id, text: c.text, createdAt: c.createdAt } : null;
-      }).filter(Boolean)
-    };
-  }).filter(Boolean));
+// _meal(data) — подготовить запись дневника для страницы
+function _meal(data) {
+  return { id: data.id, type: data.item_type, name: data.item_name, date: data.date,
+    productId: data.product_id, recipeId: data.recipe_id, grams: Number(data.amount_grams), ..._nutrition(data) };
 }
 
-function _initMock() {
-  if (_load('schema', 0) < 3) {
-    _migrate();
-    _save('schema', 3);
-  }
-  if (!_load('catalog_products', null)) _save('catalog_products', PRODUCTS_SEED);
-  if (!_load('catalog_recipes', null)) _save('catalog_recipes', RECIPES_SEED);
-
-  const users = _load('users', []);
-  if (!users.some(u => u.role === 'admin')) {
-    users.push({ ...ADMIN_SEED, registeredAt: Date.now() });
-    _save('users', users);
-  }
+// _post(data) — подготовить пост и счётчики для стены
+function _post(data) {
+  return { id: data.id, authorId: data.user_id, authorName: data.author_name, text: data.content,
+    createdAt: data.created_at, liked: data.liked, likesCount: data.likes_count, commentsCount: data.comments_count };
 }
 
-function _authorName(users, id) {
-  const u = users.find(x => x.id === id);
-  return u ? (u.name || u.email.split('@')[0]) : 'Удалённый пользователь';
+// _comment(data) — подготовить комментарий для стены
+function _comment(data) {
+  return { id: data.id, authorId: data.user_id, authorName: data.author_name, text: data.content, createdAt: data.created_at };
 }
 
-function _enrichPost(post, users) {
-  return {
-    ...post,
-    authorName: _authorName(users, post.authorId),
-    comments: (post.comments || []).map(c => ({ ...c, authorName: _authorName(users, c.authorId) }))
-  };
+// _productPayload(data) — собрать поля продукта для сервера
+async function _productPayload(data) {
+  await API.getCategories();
+  const category = _categories.find(item => item.slug === data.category);
+  if (!category) throw new Error('Выберите категорию продукта');
+  return { product_name: data.name, category_id: category.id, calories: data.calories,
+    proteins: data.protein, fats: data.fats, carbs: data.carbs };
 }
 
-// ============ API ============
+// _recipePayload(data) — передать ингредиенты и шаги; КБЖУ рассчитает сервер
+function _recipePayload(data) {
+  return { recipe_name: data.name, category: data.category, description: data.description,
+    ingredients: data.ingredients.map(item => ({ product_id: item.product_id, amount_grams: item.amount_grams })),
+    steps: data.steps.map((description, index) => ({ step_number: index + 1, description })) };
+}
 
 const API = {
 
@@ -579,334 +312,138 @@ const API = {
     _clearSession();
   },
 
-  // ==================== ДНЕВНИК ====================
-
-  async getAllMeals() {
-    if (USE_MOCK) {
-      const me = this.getCurrentUser();
-      if (!me) return [];
-      return _load('meals', []).filter(m => m.userId === me.id);
+  // getCategories() — загрузить категории продуктов с сервера
+  async getCategories() {
+    if (!_categoryRequest) {
+      _categoryRequest = _http('GET', '/categories').then(items => {
+        _categories = items;
+        Object.keys(PRODUCT_CATEGORIES).forEach(key => delete PRODUCT_CATEGORIES[key]);
+        items.forEach(item => { PRODUCT_CATEGORIES[item.slug] = item.category_name; });
+        return items;
+      }).catch(error => { _categoryRequest = null; throw error; });
     }
-    return _http('GET', '/api/meals');
+    return _categoryRequest;
   },
 
+  // getMeals(date) — получить дневник за выбранную дату
   async getMeals(date) {
-    if (USE_MOCK) {
-      return (await this.getAllMeals()).filter(m => m.date === date);
-    }
-    return _http('GET', '/api/meals' + _qs({ date }));
+    return (await _http('GET', '/meals' + _qs({ date }))).map(_meal);
   },
 
+  // addMeal(meal) — добавить продукт с граммовкой или одну порцию рецепта
   async addMeal(meal) {
-    if (USE_MOCK) {
-      const me = this._requireUser();
-      const all = _load('meals', []);
-      const newMeal = { ...meal, id: _uid(), userId: me.id };
-      all.push(newMeal);
-      _save('meals', all);
-      return newMeal;
+    const payload = { type: meal.type, date: meal.date };
+    if (meal.type === 'product') {
+      payload.product_id = meal.productId;
+      payload.amount_grams = meal.grams;
+    } else if (meal.type === 'recipe') {
+      payload.recipe_id = meal.recipeId;
+    } else {
+      throw new Error('Неизвестный тип записи дневника');
     }
-    return _http('POST', '/api/meals', meal);
+    return _meal(await _http('POST', '/meals', payload));
   },
 
-  async deleteMeal(id) {
-    if (USE_MOCK) {
-      const me = this._requireUser();
-      _save('meals', _load('meals', []).filter(m => !(m.id === id && m.userId === me.id)));
-      return;
-    }
-    await _http('DELETE', `/api/meals/${id}`);
-  },
+  // deleteMeal(id) — удалить запись дневника на сервере
+  async deleteMeal(id) { await _http('DELETE', '/meals/' + id); },
 
-  // ==================== ПРОДУКТЫ ====================
-  // product = { id, name, category, calories, protein, fats, carbs }  (на 100 г)
-
+  // getProducts(filters) — загрузить продукты с поиском и фильтром
   async getProducts({ search = '', category = '' } = {}) {
-    if (USE_MOCK) {
-      const q = search.trim().toLowerCase();
-      return _load('catalog_products', []).filter(p =>
-        (!category || p.category === category) &&
-        (!q || p.name.toLowerCase().includes(q)));
-    }
-    return _http('GET', '/api/products' + _qs({ search: search.trim(), category }));
+    await this.getCategories();
+    return (await _http('GET', '/products' + _qs({ search: search.trim(), category }))).map(_product);
   },
 
+  // addProduct(data) — создать продукт в каталоге
   async addProduct(data) {
-    if (USE_MOCK) {
-      this._requireAdmin();
-      const all = _load('catalog_products', []);
-      const product = { id: all.reduce((m, p) => Math.max(m, p.id), 0) + 1, ..._cleanProduct(data) };
-      all.push(product);
-      _save('catalog_products', all);
-      return product;
-    }
-    return _http('POST', '/api/products', data);
+    return _product(await _http('POST', '/products', await _productPayload(data)));
   },
 
+  // updateProduct(id, data) — изменить продукт в каталоге
   async updateProduct(id, data) {
-    if (USE_MOCK) {
-      this._requireAdmin();
-      const all = _load('catalog_products', []);
-      const idx = all.findIndex(p => p.id === id);
-      if (idx === -1) throw new Error('Продукт не найден');
-      all[idx] = { id, ..._cleanProduct(data) };
-      _save('catalog_products', all);
-      return all[idx];
-    }
-    return _http('PUT', `/api/products/${id}`, data);
+    return _product(await _http('PATCH', '/products/' + id, await _productPayload(data)));
   },
 
-  async deleteProduct(id) {
-    if (USE_MOCK) {
-      this._requireAdmin();
-      _save('catalog_products', _load('catalog_products', []).filter(p => p.id !== id));
-      _save('favorites', _load('favorites', []).filter(f => !(f.type === 'product' && f.itemId === id)));
-      return;
-    }
-    await _http('DELETE', `/api/products/${id}`);
-  },
+  // deleteProduct(id) — удалить продукт; сервер проверит связи с рецептами
+  async deleteProduct(id) { await _http('DELETE', '/products/' + id); },
 
-  // ==================== РЕЦЕПТЫ ====================
-  // recipe = { id, name, category, description, calories, protein, fats, carbs, ingredients[], steps[] }  (на порцию)
-
+  // getRecipes(filters) — загрузить рецепты с поиском и фильтром
   async getRecipes({ search = '', category = '' } = {}) {
-    if (USE_MOCK) {
-      const q = search.trim().toLowerCase();
-      return _load('catalog_recipes', []).filter(r =>
-        (!category || r.category === category) &&
-        (!q || r.name.toLowerCase().includes(q)));
-    }
-    return _http('GET', '/api/recipes' + _qs({ search: search.trim(), category }));
+    return (await _http('GET', '/recipes' + _qs({ search: search.trim(), category }))).map(_recipe);
   },
 
-  async getRecipe(id) {
-    if (USE_MOCK) {
-      return _load('catalog_recipes', []).find(r => r.id === id) || null;
-    }
-    try { return await _http('GET', `/api/recipes/${id}`); } catch (e) { return null; }
-  },
+  // getRecipe(id) — загрузить полную карточку рецепта
+  async getRecipe(id) { return _recipe(await _http('GET', '/recipes/' + id)); },
 
-  async addRecipe(data) {
-    if (USE_MOCK) {
-      this._requireAdmin();
-      const all = _load('catalog_recipes', []);
-      const recipe = { id: all.reduce((m, r) => Math.max(m, r.id), 0) + 1, ..._cleanRecipe(data) };
-      all.push(recipe);
-      _save('catalog_recipes', all);
-      return recipe;
-    }
-    return _http('POST', '/api/recipes', data);
-  },
+  // addRecipe(data) — создать рецепт с продуктами и шагами
+  async addRecipe(data) { return _recipe(await _http('POST', '/recipes', _recipePayload(data))); },
 
-  async updateRecipe(id, data) {
-    if (USE_MOCK) {
-      this._requireAdmin();
-      const all = _load('catalog_recipes', []);
-      const idx = all.findIndex(r => r.id === id);
-      if (idx === -1) throw new Error('Рецепт не найден');
-      all[idx] = { id, ..._cleanRecipe(data) };
-      _save('catalog_recipes', all);
-      return all[idx];
-    }
-    return _http('PUT', `/api/recipes/${id}`, data);
-  },
+  // updateRecipe(id, data) — изменить рецепт с заменой ингредиентов и шагов
+  async updateRecipe(id, data) { return _recipe(await _http('PATCH', '/recipes/' + id, _recipePayload(data))); },
 
-  async deleteRecipe(id) {
-    if (USE_MOCK) {
-      this._requireAdmin();
-      _save('catalog_recipes', _load('catalog_recipes', []).filter(r => r.id !== id));
-      _save('favorites', _load('favorites', []).filter(f => !(f.type === 'recipe' && f.itemId === id)));
-      return;
-    }
-    await _http('DELETE', `/api/recipes/${id}`);
-  },
+  // deleteRecipe(id) — удалить рецепт из каталога
+  async deleteRecipe(id) { await _http('DELETE', '/recipes/' + id); },
 
-  // ==================== ИЗБРАННОЕ ====================
-  // В хранилище лежит только {userId, type, itemId}; данные берутся из справочников,
-  // поэтому правки администратора сразу видны в избранном.
-  // type: 'product' | 'recipe' | undefined (undefined = все)
-
+  // getFavorites(type) — загрузить избранное и привести вложенные данные к карточкам
   async getFavorites(type) {
-    if (USE_MOCK) {
-      const me = this.getCurrentUser();
-      if (!me) return [];
-      const products = _load('catalog_products', []);
-      const recipes = _load('catalog_recipes', []);
-      const result = [];
-
-      _load('favorites', [])
-        .filter(f => f.userId === me.id && (!type || f.type === type))
-        .forEach(f => {
-          const src = (f.type === 'product' ? products : recipes).find(x => x.id === f.itemId);
-          if (!src) return;
-          result.push({
-            type: f.type,
-            itemId: f.itemId,
-            name: src.name,
-            category: src.category,
-            calories: src.calories,
-            protein: src.protein,
-            fats: src.fats,
-            carbs: src.carbs,
-            description: f.type === 'recipe' ? src.description : undefined
-          });
-        });
-      return result;
-    }
-    return _http('GET', '/api/favorites' + _qs({ type }));
+    const items = await _http('GET', '/favorites');
+    if (items.some(item => item.product)) await this.getCategories();
+    return items.map(item => {
+      if (item.product) return { ..._product(item.product), type: 'product', itemId: item.product_id };
+      if (item.recipe) return { ..._recipe(item.recipe), type: 'recipe', itemId: item.recipe_id };
+      return null;
+    }).filter(item => item && (!type || item.type === type));
   },
 
+  // addFavorite(item) — сохранить продукт или рецепт в избранном
   async addFavorite(item) {
-    if (USE_MOCK) {
-      const me = this._requireUser();
-      const favs = _load('favorites', []);
-      const exists = favs.some(f => f.userId === me.id && f.type === item.type && f.itemId === item.itemId);
-      if (exists) return;
-      favs.push({ userId: me.id, type: item.type, itemId: item.itemId });
-      _save('favorites', favs);
-      return;
-    }
-    await _http('POST', '/api/favorites', { type: item.type, itemId: item.itemId });
+    if (!['product', 'recipe'].includes(item.type)) throw new Error('Неизвестный тип избранного');
+    const payload = item.type === 'product' ? { product_id: item.itemId } : { recipe_id: item.itemId };
+    await _http('POST', '/favorites', payload);
   },
 
-  async removeFavorite(type, itemId) {
-    if (USE_MOCK) {
-      const me = this._requireUser();
-      _save('favorites', _load('favorites', [])
-        .filter(f => !(f.userId === me.id && f.type === type && f.itemId === itemId)));
-      return;
-    }
-    await _http('DELETE', `/api/favorites/${type}/${itemId}`);
+  // removeFavorite(type, id) — убрать элемент из избранного
+  async removeFavorite(type, id) {
+    if (!['product', 'recipe'].includes(type)) throw new Error('Неизвестный тип избранного');
+    await _http('DELETE', '/favorites/' + (type === 'product' ? 'products/' : 'recipes/') + id);
   },
 
-  async isFavorite(type, itemId) {
-    const favs = await this.getFavorites(type);
-    return favs.some(f => f.itemId === itemId);
+  // isFavorite(type, id) — проверить наличие элемента в избранном
+  async isFavorite(type, id) { return (await this.getFavorites(type)).some(item => item.itemId === id); },
+
+  // getPosts(options) — загрузить страницу ленты
+  async getPosts({ limit = 20, offset = 0 } = {}) {
+    return (await _http('GET', '/posts' + _qs({ limit, offset }))).map(_post);
   },
 
-  // ==================== СТЕНА ====================
-  // post    = { id, authorId, authorName, text, createdAt, likes: [userId], comments: [] }
-  // comment = { id, authorId, authorName, text, createdAt }
+  // createPost(text) — опубликовать пост
+  async createPost(text) { return _post(await _http('POST', '/posts', { content: text.trim() })); },
 
-  async getPosts() {
-    if (USE_MOCK) {
-      const users = _load('users', []);
-      return _load('posts', [])
-        .map(p => _enrichPost(p, users))
-        .sort((a, b) => b.createdAt - a.createdAt);
-    }
-    return _http('GET', '/api/posts');
+  // deletePost(id) — удалить пост; права проверяет сервер
+  async deletePost(id) { await _http('DELETE', '/posts/' + id); },
+
+  // setLike(id, liked) — установить или снять лайк без переключения на сервере
+  async setLike(id, liked) {
+    const data = await _http(liked ? 'PUT' : 'DELETE', '/posts/' + id + '/like');
+    return { liked: data.liked, likesCount: data.likes_count };
   },
 
-  async createPost(text) {
-    text = String(text || '').trim();
-    if (text.length < 1) throw new Error('Введите текст');
-    if (text.length > 500) throw new Error('Не больше 500 символов');
-
-    if (USE_MOCK) {
-      const me = this._requireUser();
-      const post = { id: _uid(), authorId: me.id, text, createdAt: Date.now(), likes: [], comments: [] };
-      const all = _load('posts', []);
-      all.push(post);
-      _save('posts', all);
-      return _enrichPost(post, _load('users', []));
-    }
-    return _http('POST', '/api/posts', { text });
+  // getComments(postId) — загрузить комментарии при раскрытии поста
+  async getComments(postId) {
+    return (await _http('GET', '/posts/' + postId + '/comments')).map(_comment);
   },
 
-  async deletePost(postId) {
-    if (USE_MOCK) {
-      const me = this._requireUser();
-      const all = _load('posts', []);
-      const post = all.find(p => p.id === postId);
-      if (!post) throw new Error('Пост не найден');
-      if (post.authorId !== me.id && me.role !== 'admin') throw new Error('Нет прав на удаление');
-      _save('posts', all.filter(p => p.id !== postId));
-      return;
-    }
-    await _http('DELETE', `/api/posts/${postId}`);
-  },
-
-  async toggleLike(postId) {
-    if (USE_MOCK) {
-      const me = this._requireUser();
-      const all = _load('posts', []);
-      const post = all.find(p => p.id === postId);
-      if (!post) throw new Error('Пост не найден');
-
-      post.likes = post.likes || [];
-      const idx = post.likes.indexOf(me.id);
-      if (idx === -1) post.likes.push(me.id); else post.likes.splice(idx, 1);
-
-      _save('posts', all);
-      return _enrichPost(post, _load('users', []));
-    }
-    return _http('POST', `/api/posts/${postId}/like`);
-  },
-
+  // addComment(postId, text) — отправить комментарий
   async addComment(postId, text) {
-    text = String(text || '').trim();
-    if (text.length < 1) throw new Error('Введите текст');
-    if (text.length > 300) throw new Error('Не больше 300 символов');
-
-    if (USE_MOCK) {
-      const me = this._requireUser();
-      const all = _load('posts', []);
-      const post = all.find(p => p.id === postId);
-      if (!post) throw new Error('Пост не найден');
-
-      const comment = { id: _uid(), authorId: me.id, text, createdAt: Date.now() };
-      post.comments = post.comments || [];
-      post.comments.push(comment);
-      _save('posts', all);
-      return { ...comment, authorName: _authorName(_load('users', []), me.id) };
-    }
-    return _http('POST', `/api/posts/${postId}/comments`, { text });
+    return _comment(await _http('POST', '/posts/' + postId + '/comments', { content: text.trim() }));
   },
 
-  async deleteComment(postId, commentId) {
-    if (USE_MOCK) {
-      const me = this._requireUser();
-      const all = _load('posts', []);
-      const post = all.find(p => p.id === postId);
-      if (!post) throw new Error('Пост не найден');
-
-      const comment = (post.comments || []).find(c => c.id === commentId);
-      if (!comment) throw new Error('Комментарий не найден');
-      if (comment.authorId !== me.id && me.role !== 'admin') throw new Error('Нет прав на удаление');
-
-      post.comments = post.comments.filter(c => c.id !== commentId);
-      _save('posts', all);
-      return;
-    }
-    await _http('DELETE', `/api/posts/${postId}/comments/${commentId}`);
-  },
-
-  // ==================== СЛУЖЕБНОЕ ====================
-
-  // _requireUser() — получить пользователя или выдать ошибку входа
-  _requireUser() {
-    const user = this.getCurrentUser();
-    if (!user) throw new Error('Нужно войти');
-    return user;
-  },
-
-  // _requireAdmin() — проверить роль администратора
-  _requireAdmin() {
-    const user = this._requireUser();
-    if (user.role !== 'admin') throw new Error('Недостаточно прав');
-    return user;
-  },
+  // deleteComment(postId, id) — удалить комментарий
+  async deleteComment(postId, id) { await _http('DELETE', '/posts/' + postId + '/comments/' + id); },
 
   // _setCurrentUser(user) — сохранить профиль только в памяти страницы
-  _setCurrentUser(user) {
-    const { password, ...safe } = user;
-    _currentUser = safe;
-  }
+  _setCurrentUser(user) { _currentUser = user; }
 };
 
 window.API = API;
-
-// Удаляем копию профиля, оставшуюся от предыдущей версии приложения.
+// Удалить устаревшую копию профиля; остальные старые данные не затрагиваем.
 localStorage.removeItem('currentUser');
-if (USE_MOCK) _initMock();
