@@ -2,7 +2,8 @@
 // Справочник продуктов: поиск, фильтр по категории, добавление в дневник,
 // избранное. Для администратора — добавление, изменение и удаление продуктов.
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!await window.authReady) return;
   const dateFromURL = pickDate(new URLSearchParams(location.search).get('date'));
   document.getElementById('back-link').href = `diary.html?date=${dateFromURL}`;
 

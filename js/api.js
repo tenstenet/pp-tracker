@@ -225,8 +225,12 @@ function _qs(params) {
 }
 
 let _refreshRequest = null;
+let _currentUser = null;
+let _profileRequest = null;
 
+// _clearSession() — удалить токены и профиль из памяти страницы
 function _clearSession() {
+  _currentUser = null;
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
   localStorage.removeItem('currentUser');
@@ -406,17 +410,6 @@ function _migrate() {
   const byEmail = (e) => users.find(u => u.email === String(e || '').toLowerCase());
   const owner = users.find(u => u.role !== 'admin');
 
-  const cur = _load('currentUser', null);
-  if (cur) {
-    const u = byEmail(cur.email);
-    if (u) {
-      const { password, ...safe } = u;
-      _save('currentUser', safe);
-    } else {
-      localStorage.removeItem('currentUser');
-    }
-  }
-
   _save('meals', _load('meals', [])
     .map(m => (m.userId ? m : (owner ? { ...m, userId: owner.id } : null)))
     .filter(Boolean));
@@ -499,21 +492,12 @@ const API = {
 
     localStorage.setItem('access_token', tokens.access_token);
     localStorage.setItem('refresh_token', tokens.refresh_token);
+    _currentUser = null;
 
     try {
-      const profile = await _http('GET', '/profile');
-
-      const user = {
-        ...profile,
-        registeredAt: profile.created_at
-      };
-
-      this._setSession(user);
-      return user;
+      return await this.getProfile();
     } catch (error) {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('currentUser');
+      _clearSession();
       throw error;
     }
   },
@@ -527,14 +511,39 @@ const API = {
       // Выходим локально даже при истёкшем токене или недоступном сервере.
       console.warn('Не удалось подтвердить выход на сервере:', error.message);
     } finally {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('currentUser');
+      _clearSession();
     }
   },
 
+  // getCurrentUser() — получить уже загруженный профиль из памяти страницы
   getCurrentUser() {
-    return _load('currentUser', null);
+    return _currentUser;
+  },
+
+  // restoreUser() — проверить вход на сервере после открытия страницы
+  async restoreUser() {
+    if (_currentUser) return _currentUser;
+    if (!localStorage.getItem('access_token') && !localStorage.getItem('refresh_token')) {
+      return null;
+    }
+    if (_profileRequest) return _profileRequest;
+
+    _profileRequest = (async () => {
+      try {
+        return await this.getProfile();
+      } catch (error) {
+        if (!localStorage.getItem('access_token') && !localStorage.getItem('refresh_token')) {
+          return null;
+        }
+        throw error;
+      }
+    })();
+
+    try {
+      return await _profileRequest;
+    } finally {
+      _profileRequest = null;
+    }
   },
 
   isAdmin() {
@@ -542,58 +551,32 @@ const API = {
     return !!u && u.role === 'admin';
   },
 
+  // getProfile() — загрузить профиль с сервера и сохранить в памяти страницы
   async getProfile() {
-    if (USE_MOCK) {
-      const me = this._requireUser();
-      const user = _load('users', []).find(u => u.id === me.id);
-      if (!user) throw new Error('Пользователь не найден');
-      return this._safe(user);
+    const sessionToken = localStorage.getItem('refresh_token');
+    const profile = await _http('GET', '/profile');
+    if (localStorage.getItem('refresh_token') !== sessionToken) {
+      throw new Error('Состояние входа изменилось. Повторите действие');
     }
-    return _http('GET', '/api/profile');
+    const user = { ...profile, registeredAt: profile.created_at };
+    this._setCurrentUser(user);
+    return user;
   },
 
   async updateName(name) {
     name = String(name || '').trim();
     if (name.length < 2) throw new Error('Введите имя и фамилию');
 
-    if (USE_MOCK) {
-      const me = this._requireUser();
-      const users = _load('users', []);
-      const user = users.find(u => u.id === me.id);
-      if (!user) throw new Error('Пользователь не найден');
-      user.name = name;
-      _save('users', users);
-      this._setSession(user);
-      return this._safe(user);
-    }
-
-    const user = await _http('POST', '/api/profile', { name });
-    this._setSession(user);
+    const profile = await _http('POST', '/profile', { name });
+    const user = { ...profile, registeredAt: profile.created_at };
+    this._setCurrentUser(user);
     return user;
   },
 
   // Удаляет аккаунт и все связанные данные: дневник, избранное, посты, комментарии, реакции.
   async deleteAccount() {
-    if (USE_MOCK) {
-      const me = this._requireUser();
-      if (me.role === 'admin') throw new Error('Аккаунт администратора нельзя удалить');
-
-      _save('users', _load('users', []).filter(u => u.id !== me.id));
-      _save('meals', _load('meals', []).filter(m => m.userId !== me.id));
-      _save('favorites', _load('favorites', []).filter(f => f.userId !== me.id));
-      _save('posts', _load('posts', [])
-        .filter(p => p.authorId !== me.id)
-        .map(p => ({
-          ...p,
-          likes: (p.likes || []).filter(id => id !== me.id),
-          comments: (p.comments || []).filter(c => c.authorId !== me.id)
-        })));
-      localStorage.removeItem('currentUser');
-      return;
-    }
-
-    await _http('DELETE', '/api/account');
-    localStorage.removeItem('currentUser');
+    await _http('DELETE', '/account');
+    _clearSession();
   },
 
   // ==================== ДНЕВНИК ====================
@@ -901,29 +884,29 @@ const API = {
 
   // ==================== СЛУЖЕБНОЕ ====================
 
+  // _requireUser() — получить пользователя или выдать ошибку входа
   _requireUser() {
     const user = this.getCurrentUser();
     if (!user) throw new Error('Нужно войти');
     return user;
   },
 
+  // _requireAdmin() — проверить роль администратора
   _requireAdmin() {
     const user = this._requireUser();
     if (user.role !== 'admin') throw new Error('Недостаточно прав');
     return user;
   },
 
-  _setSession(user) {
+  // _setCurrentUser(user) — сохранить профиль только в памяти страницы
+  _setCurrentUser(user) {
     const { password, ...safe } = user;
-    _save('currentUser', safe);
-  },
-
-  _safe(user) {
-    const { password, ...safe } = user;
-    return safe;
+    _currentUser = safe;
   }
 };
 
 window.API = API;
 
+// Удаляем копию профиля, оставшуюся от предыдущей версии приложения.
+localStorage.removeItem('currentUser');
 if (USE_MOCK) _initMock();

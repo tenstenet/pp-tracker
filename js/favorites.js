@@ -3,7 +3,8 @@
 // Продукт — через панель граммовки (как на странице «Продукты»),
 // рецепт — сразу, 1 порция.
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!await window.authReady) return;
   const dateFromURL = pickDate(new URLSearchParams(location.search).get('date'));
 
   document.getElementById('back-link').href = `diary.html?date=${dateFromURL}`;

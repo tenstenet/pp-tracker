@@ -4,7 +4,8 @@
 // Все данные приходят из API.getRecipe(id), поэтому после подключения БД
 // и правок администратора страница менять не нужно.
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!await window.authReady) return;
   const params     = new URLSearchParams(location.search);
   const recipeId   = Number(params.get('id'));
   const dateFromURL = pickDate(params.get('date'));

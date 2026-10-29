@@ -3,7 +3,8 @@
 // избранное, переход в карточку рецепта. Для администратора — добавление,
 // изменение и удаление рецептов.
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!await window.authReady) return;
   const dateFromURL = pickDate(new URLSearchParams(location.search).get('date'));
   document.getElementById('back-link').href = `diary.html?date=${dateFromURL}`;
 

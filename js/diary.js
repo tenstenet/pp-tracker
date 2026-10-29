@@ -1,24 +1,24 @@
 // js/diary.js
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!await window.authReady) return;
   // ---- Состояние ----
   // Дата берётся из ?date=YYYY-MM-DD (после добавления еды со страниц продуктов/рецептов),
   // иначе — сегодня. Будущие даты не допускаются.
   const fromUrl = new URLSearchParams(location.search).get('date');
   let currentDate = (isValidISO(fromUrl) && fromUrl <= todayISO()) ? fromUrl : todayISO();
 
-  // ---- Элементы ----
-  const dateEl       = document.getElementById('current-date');
-  const datePicker   = document.getElementById('date-picker');
-  const prevBtn      = document.getElementById('prev-day');
-  const nextBtn      = document.getElementById('next-day');
+  const dateEl = document.getElementById('current-date');
+  const datePicker = document.getElementById('date-picker');
+  const prevBtn = document.getElementById('prev-day');
+  const nextBtn = document.getElementById('next-day');
   const productsList = document.getElementById('products-list');
-  const recipesList  = document.getElementById('recipes-list');
+  const recipesList = document.getElementById('recipes-list');
 
   const totalCaloriesEl = document.getElementById('total-calories');
-  const totalProteinEl  = document.getElementById('total-protein');
-  const totalFatsEl     = document.getElementById('total-fats');
-  const totalCarbsEl    = document.getElementById('total-carbs');
+  const totalProteinEl = document.getElementById('total-protein');
+  const totalFatsEl = document.getElementById('total-fats');
+  const totalCarbsEl = document.getElementById('total-carbs');
 
   // ---- Инициализация ----
   renderDate();
@@ -123,9 +123,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { calories: 0, protein: 0, fats: 0, carbs: 0 });
 
     totalCaloriesEl.textContent = Math.round(total.calories);
-    totalProteinEl.textContent  = Math.round(total.protein);
-    totalFatsEl.textContent     = Math.round(total.fats);
-    totalCarbsEl.textContent    = Math.round(total.carbs);
+    totalProteinEl.textContent = Math.round(total.protein);
+    totalFatsEl.textContent = Math.round(total.fats);
+    totalCarbsEl.textContent = Math.round(total.carbs);
   }
 
   function renderList(container, items) {

@@ -1,14 +1,21 @@
 // js/login.js
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Уже залогинен → в дневник
-  if (API.getCurrentUser()) {
-    location.replace('diary.html');
-    return;
-  }
-
+document.addEventListener('DOMContentLoaded', async () => {
   const form = document.getElementById('login-form');
   if (!form) return;
+
+  // Проверяем сохранённые токены на сервере, а не локальную копию профиля.
+  setLoading(form, true);
+  try {
+    if (await API.restoreUser()) {
+      location.replace('diary.html');
+      return;
+    }
+  } catch (error) {
+    showError('login-password', 'Не удалось проверить вход: ' + error.message);
+  } finally {
+    setLoading(form, false);
+  }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

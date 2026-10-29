@@ -1,6 +1,7 @@
 // js/wall.js
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!await window.authReady) return;
   const currentUser = API.getCurrentUser();
   if (!currentUser) return; // auth.js выкинет
 
